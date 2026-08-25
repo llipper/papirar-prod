@@ -12,6 +12,7 @@ export type BibliotecaBook = {
   acronym: string
   category: BibliotecaCategory
   updatedAt: string
+  coverPath?: string
   lawId?: string
   version?: string
   scope?: string
@@ -25,6 +26,21 @@ export const bibliotecaCategories: BibliotecaCategory[] = [
   "Direitos Humanos",
   "Proteção de Dados",
 ]
+
+const coverByBookId: Record<string, string> = {
+  "1": "/capas/constituicao_federal.png",
+  "2": "/capas/codigo_civil.png",
+  "3": "/capas/codigo_processo_civil.png",
+  "4": "/capas/direito_penal.png",
+  "5": "/capas/direito_processual_penal.png",
+  "6": "/capas/codigo_penal_militar.png",
+  "7": "/capas/codigo_processual_penal_militar.png",
+  "8": "/capas/codigo_transito_brasileiro.png",
+  "26": "/capas/lei_maria_penha.png",
+}
+
+// Incrementar quando uma capa for substituída mantendo o mesmo nome do arquivo.
+const COVER_ASSET_VERSION = "2026-08-25-02"
 
 export const bibliotecaBooks: BibliotecaBook[] = [
   ["1", "Constituição Federal de 1988", "CF/88", "Constitucional", "2024", "constituicao_federal", "2026-08-21", "preambulo"],
@@ -70,6 +86,9 @@ export const bibliotecaBooks: BibliotecaBook[] = [
   acronym,
   category: category as BibliotecaCategory,
   updatedAt,
+  coverPath: coverByBookId[id]
+    ? `${coverByBookId[id]}?v=${COVER_ASSET_VERSION}`
+    : undefined,
   lawId,
   version,
   scope,

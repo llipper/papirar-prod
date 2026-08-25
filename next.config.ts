@@ -17,6 +17,13 @@ const contentSecurityPolicy = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  images: {
+    localPatterns: [
+      { pathname: "/capas/**" },
+      { pathname: "/mock/**", search: "" },
+      { pathname: "/logo.svg", search: "" },
+    ],
+  },
   async headers() {
     return [{
       source: "/(.*)",

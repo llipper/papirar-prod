@@ -34,66 +34,61 @@ export function ConfigurationPage() {
 
   return (
     <DashboardShell title="Configuração" description="Preferências e acesso da sua conta.">
-      <section>
-        <h1 className="font-heading text-2xl font-semibold tracking-tight">Configuração</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Ajuste o Papirar para o seu jeito de estudar.</p>
-      </section>
-
-      <div className="grid max-w-4xl gap-4">
-        <Card>
-          <CardHeader>
-            <CardTitle>Aparência</CardTitle>
-            <CardDescription>Escolha como o Papirar deve aparecer para você.</CardDescription>
+      <div className="mx-auto grid w-full max-w-3xl gap-3">
+        <Card size="sm">
+          <CardHeader className="px-4">
+            <CardTitle className="text-sm">Aparência</CardTitle>
+            <CardDescription className="text-xs">Escolha como o Papirar deve aparecer para você.</CardDescription>
           </CardHeader>
-          <CardContent className="grid gap-2 sm:grid-cols-3">
+          <CardContent className="grid gap-1.5 px-4 sm:grid-cols-3">
             {themes.map(({ value, label, icon: Icon }) => {
               const selected = mounted && theme === value
               return (
-                <button
+                <Button
                   key={value}
                   type="button"
+                  variant={selected ? "secondary" : "outline"}
+                  size="sm"
                   onClick={() => setTheme(value)}
-                  className="flex items-center justify-between rounded-xl border bg-background p-3 text-left transition-colors hover:bg-muted focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30"
+                  className="justify-start"
                   aria-pressed={selected}
                 >
-                  <span className="flex items-center gap-2 text-sm font-medium">
-                    <Icon className="size-4" />
-                    {label}
-                  </span>
-                  {selected ? <Check className="size-4 text-primary" /> : null}
-                </button>
+                  <Icon />
+                  <span>{label}</span>
+                  {selected ? <Check className="ml-auto text-primary" /> : null}
+                </Button>
               )
             })}
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Conta</CardTitle>
-            <CardDescription>Gerencie seus dados pessoais e seu perfil público.</CardDescription>
+        <Card size="sm">
+          <CardHeader className="px-4">
+            <CardTitle className="text-sm">Conta</CardTitle>
+            <CardDescription className="text-xs">Gerencie seus dados pessoais e seu perfil público.</CardDescription>
           </CardHeader>
-          <CardContent className="flex flex-col gap-4">
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className="flex size-9 items-center justify-center rounded-xl bg-muted">
-                  <UserRound className="size-4" />
+          <CardContent className="flex flex-col gap-3 px-4">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex min-w-0 items-center gap-2.5">
+                <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted">
+                  <UserRound className="size-3.5" />
                 </div>
-                <div>
-                  <p className="text-sm font-medium">Seu perfil</p>
-                  <p className="text-xs text-muted-foreground">Nome, avatar, bio e cor do perfil.</p>
+                <div className="min-w-0">
+                  <p className="text-xs font-medium">Seu perfil</p>
+                  <p className="truncate text-[11px] text-muted-foreground">Nome, avatar, bio e cor do perfil.</p>
                 </div>
               </div>
-              <Button asChild variant="outline" size="sm">
+              <Button asChild variant="outline" size="xs">
                 <Link href="/dashboard/perfil">Abrir perfil</Link>
               </Button>
             </div>
             <Separator />
-            <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-sm font-medium">Sessão atual</p>
-                <p className="text-xs text-muted-foreground">Saia deste dispositivo com segurança.</p>
+                <p className="text-xs font-medium">Sessão atual</p>
+                <p className="text-[11px] text-muted-foreground">Saia deste dispositivo com segurança.</p>
               </div>
-              <Button variant="destructive" size="sm" onClick={handleSignOut} disabled={isSigningOut}>
+              <Button variant="destructive" size="xs" onClick={handleSignOut} disabled={isSigningOut}>
                 <LogOut />
                 {isSigningOut ? "Saindo..." : "Sair da conta"}
               </Button>
