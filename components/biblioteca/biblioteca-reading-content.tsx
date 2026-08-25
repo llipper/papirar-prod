@@ -43,7 +43,12 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar"
 import { bibliotecaBooks } from "@/lib/biblioteca/catalog-data"
-import { loadLawReading, type LawReading, type ReadingNode } from "@/lib/biblioteca/reading-service"
+import {
+  LAW_READING_UPDATED_EVENT,
+  loadLawReading,
+  type LawReading,
+  type ReadingNode,
+} from "@/lib/biblioteca/reading-service"
 import {
   createLawAnnotation,
   createLawHighlight,
@@ -95,6 +100,24 @@ export function BibliotecaReadingContent({ bookId, initialNodeKey, initialSelect
     }
     setReading(null)
     setError(null)
+
+    const handleBackgroundUpdate = (event: Event) => {
+      const updatedReading = (event as CustomEvent<LawReading>).detail
+      if (!updatedReading || updatedReading.lawId !== book.lawId || cancelled) return
+      setReading(updatedReading)
+      void loadLawUserContent(updatedReading)
+        .then((content) => {
+          if (!cancelled) {
+            setHighlights(content.highlights)
+            setAnnotations(content.annotations)
+          }
+        })
+        .catch((reason: unknown) => {
+          console.error("[Papirar][Conteúdo do usuário] não foi possível atualizar", reason)
+        })
+    }
+    window.addEventListener(LAW_READING_UPDATED_EVENT, handleBackgroundUpdate)
+
     loadLawReading(book)
       .then((value) => {
         if (cancelled) return
@@ -132,6 +155,7 @@ export function BibliotecaReadingContent({ bookId, initialNodeKey, initialSelect
       })
     return () => {
       cancelled = true
+      window.removeEventListener(LAW_READING_UPDATED_EVENT, handleBackgroundUpdate)
     }
   }, [book, initialNodeKey, initialSelectedText])
 

@@ -1,5 +1,10 @@
 import type { BibliotecaBook } from "./catalog-data"
 import { getSupabasePublicConfig } from "@/lib/supabase/public-config"
+import {
+  createLawReadingCacheKey,
+  readCachedLawReading,
+  writeCachedLawReading,
+} from "./law-reading-cache"
 
 export type ReadingNode = {
   nodeKey: string
@@ -148,7 +153,10 @@ async function queryAll<T>(path: string) {
   }
 }
 
-export async function loadLawReading(book: BibliotecaBook): Promise<LawReading> {
+export const LAW_READING_UPDATED_EVENT = "papirar:law-reading-updated"
+const LAW_READING_REVALIDATION_MS = 15 * 60 * 1000
+
+async function loadLawReadingFromRemote(book: BibliotecaBook): Promise<LawReading> {
   console.info(`${READING_LOG_PREFIX} iniciando leitura`, {
     bookId: book.id,
     title: book.title,
@@ -258,4 +266,54 @@ export async function loadLawReading(book: BibliotecaBook): Promise<LawReading> 
   })
 
   return { lawId: book.lawId, versionId, title: book.title, acronym: book.acronym, nodes }
+}
+
+export async function loadLawReading(book: BibliotecaBook): Promise<LawReading> {
+  if (!book.lawId || !book.version || !book.scope) {
+    return loadLawReadingFromRemote(book)
+  }
+
+  const cacheKey = createLawReadingCacheKey(book.lawId, book.version, book.scope)
+  const cached = await readCachedLawReading(cacheKey)
+
+  if (cached) {
+    console.info(`${READING_LOG_PREFIX} cache local utilizado`, {
+      lawId: book.lawId,
+      versionId: cached.reading.versionId,
+      ageMs: Date.now() - cached.savedAt,
+    })
+
+    if (Date.now() - cached.savedAt < LAW_READING_REVALIDATION_MS) {
+      return cached.reading
+    }
+
+    void loadLawReadingFromRemote(book)
+      .then(async (freshReading) => {
+        await writeCachedLawReading(cacheKey, freshReading)
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(
+            new CustomEvent<LawReading>(LAW_READING_UPDATED_EVENT, {
+              detail: freshReading,
+            })
+          )
+        }
+      })
+      .catch((reason: unknown) => {
+        console.warn(`${READING_LOG_PREFIX} atualização em segundo plano indisponível`, {
+          lawId: book.lawId,
+          reason,
+        })
+      })
+
+    return cached.reading
+  }
+
+  const freshReading = await loadLawReadingFromRemote(book)
+  await writeCachedLawReading(cacheKey, freshReading)
+  console.info(`${READING_LOG_PREFIX} leitura salva no cache local`, {
+    lawId: book.lawId,
+    versionId: freshReading.versionId,
+    nodes: freshReading.nodes.length,
+  })
+  return freshReading
 }
