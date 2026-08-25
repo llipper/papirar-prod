@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import * as React from "react"
 
 import {
@@ -15,8 +16,17 @@ import {
 } from "@/components/ui/sidebar"
 import { sidebarNavigation } from "@/lib/dashboard/sidebar-navigation"
 import { ThemeLogo } from "@/components/brand/theme-logo"
+import { removeBrowserSession } from "@/lib/auth/browser-session"
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const router = useRouter()
+
+  function handleLogout(event: React.MouseEvent<HTMLAnchorElement>) {
+    event.preventDefault()
+    removeBrowserSession()
+    router.replace("/login")
+  }
+
   return (
     <Sidebar variant="inset" {...props}>
       <SidebarHeader>
@@ -58,7 +68,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             return (
               <SidebarMenuItem key={item.href}>
                 <SidebarMenuButton asChild tooltip={item.title}>
-                  <Link href={item.href}>
+                  <Link href={item.href} onClick={item.title === "Sair da conta" ? handleLogout : undefined}>
                     <Icon />
                     <span>{item.title}</span>
                   </Link>
