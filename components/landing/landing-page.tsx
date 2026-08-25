@@ -7,6 +7,16 @@ import { ArrowRight, BookOpen, Highlighter, Headphones, Menu } from "lucide-reac
 import { LandingReveal } from "@/components/landing/landing-reveal"
 import { ThemeLogo } from "@/components/brand/theme-logo"
 import { PublicRouteGuard } from "@/components/auth/public-route-guard"
+import { Button } from "@/components/ui/button"
+import {
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet"
 
 const features = [
   {
@@ -50,9 +60,41 @@ export function LandingPage() {
           <Link href="/login" className="rounded-full bg-neutral-950 px-4 py-2.5 text-sm font-medium text-white transition-transform hover:scale-[1.03]">
             Começar agora <ArrowRight className="ml-1 inline size-3.5" />
           </Link>
-          <button aria-label="Abrir menu" className="rounded-full border border-neutral-200 p-2 md:hidden">
-            <Menu className="size-4" />
-          </button>
+          <Sheet>
+            <SheetTrigger asChild>
+              <button aria-label="Abrir menu" className="rounded-full border border-neutral-200 p-2 md:hidden">
+                <Menu className="size-4" />
+              </button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-[min(360px,calc(100vw-2rem))]">
+              <SheetHeader>
+                <SheetTitle className="flex items-center gap-2">
+                  <ThemeLogo size={22} className="size-[22px]" />
+                  papirar
+                </SheetTitle>
+                <SheetDescription>Navegue pelo Papirar.</SheetDescription>
+              </SheetHeader>
+              <nav className="mt-8 flex flex-col gap-2" aria-label="Menu principal">
+                <SheetClose asChild>
+                  <a href="#recursos" className="rounded-xl px-3 py-3 text-sm font-medium hover:bg-muted">Recursos</a>
+                </SheetClose>
+                <SheetClose asChild>
+                  <a href="#como-funciona" className="rounded-xl px-3 py-3 text-sm font-medium hover:bg-muted">Como funciona</a>
+                </SheetClose>
+                <SheetClose asChild>
+                  <a href="#para-voce" className="rounded-xl px-3 py-3 text-sm font-medium hover:bg-muted">Para estudantes</a>
+                </SheetClose>
+              </nav>
+              <div className="mt-8 grid gap-2">
+                <Button asChild variant="outline" className="w-full">
+                  <Link href="/login">Entrar</Link>
+                </Button>
+                <Button asChild className="w-full">
+                  <Link href="/login">Começar agora <ArrowRight /></Link>
+                </Button>
+              </div>
+            </SheetContent>
+          </Sheet>
         </div>
       </nav>
 
