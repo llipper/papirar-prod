@@ -6,6 +6,7 @@ import { ArrowRight, BookOpen, Highlighter, Headphones, Menu } from "lucide-reac
 
 import { LandingReveal } from "@/components/landing/landing-reveal"
 import { ThemeLogo } from "@/components/brand/theme-logo"
+import { PublicRouteGuard } from "@/components/auth/public-route-guard"
 
 const features = [
   {
@@ -30,7 +31,8 @@ const features = [
 
 export function LandingPage() {
   return (
-    <main className="min-h-screen overflow-hidden bg-white text-neutral-950">
+    <PublicRouteGuard>
+      <main className="min-h-screen overflow-hidden bg-white text-neutral-950">
       <nav className="relative mx-auto flex h-20 max-w-7xl items-center justify-between border-b border-neutral-200 px-6 lg:px-10">
         <Link href="/" className="flex items-center gap-2 text-lg font-bold tracking-tight">
           <ThemeLogo size={24} className="size-6" />
@@ -151,6 +153,7 @@ export function LandingPage() {
           </nav>
         </div>
       </footer>
-    </main>
+      </main>
+    </PublicRouteGuard>
   )
 }

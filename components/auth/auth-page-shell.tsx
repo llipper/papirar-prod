@@ -2,6 +2,7 @@ import Link from "next/link"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { AUTH_COPY } from "@/lib/auth/constants"
+import { PublicRouteGuard } from "@/components/auth/public-route-guard"
 
 export function AuthPageShell({
   children,
@@ -13,7 +14,8 @@ export function AuthPageShell({
   description: string
 }) {
   return (
-    <main className="relative isolate flex min-h-svh items-center justify-center overflow-hidden bg-background p-6 md:p-10">
+    <PublicRouteGuard>
+      <main className="relative isolate flex min-h-svh items-center justify-center overflow-hidden bg-background p-6 md:p-10">
       <div aria-hidden="true" className="pointer-events-none absolute inset-0">
         <div className="absolute -top-20 -right-28 size-[280px] rounded-[92px] bg-[var(--auth-background-shape)]" />
         <div className="absolute -bottom-4 -left-32 size-[280px] rounded-[92px] bg-[var(--auth-background-shape)]" />
@@ -45,6 +47,7 @@ export function AuthPageShell({
           Privacidade.
         </p>
       </div>
-    </main>
+      </main>
+    </PublicRouteGuard>
   )
 }
