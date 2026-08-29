@@ -24,12 +24,32 @@ export type ReadingAudio = {
   durationMs: number | null
 }
 
+export type ReadingAnnexRow = {
+  rowKey: string
+  itemCode: string
+  description: string
+  amountDisplay: string
+  note: string
+  columns: string[]
+  sortOrder: number
+}
+
+export type ReadingAnnex = {
+  annexKey: string
+  title: string
+  subtitle: string
+  leftHeader: string
+  rightHeader: string
+  rows: ReadingAnnexRow[]
+}
+
 export type LawReading = {
   lawId: string
   versionId: string
   title: string
   acronym: string
   nodes: ReadingNode[]
+  annexes: ReadingAnnex[]
 }
 
 type Session = { access_token?: string }
@@ -259,13 +279,58 @@ async function loadLawReadingFromRemote(book: BibliotecaBook): Promise<LawReadin
     })
     .filter((node): node is ReadingNode => node !== null)
 
+  const annexRows = await queryAll<{
+    id: string
+    annex_key: string
+    title: string
+    subtitle: string | null
+    left_header: string
+    right_header: string
+    sort_order: number
+  }>(
+    `legal_annexes?select=id,annex_key,title,subtitle,left_header,right_header,sort_order&law_version_id=eq.${encodeURIComponent(versionId)}&order=sort_order.asc`
+  )
+
+  const annexes: ReadingAnnex[] = []
+  for (const annex of annexRows) {
+    const rows = await queryAll<{
+      row_key: string
+      item_code: string | null
+      description: string
+      amount_display: string | null
+      note: string | null
+      columns: unknown
+      sort_order: number
+    }>(
+      `legal_annex_rows?select=row_key,item_code,description,amount_display,note,columns,sort_order&annex_id=eq.${encodeURIComponent(annex.id)}&order=sort_order.asc`
+    )
+
+    annexes.push({
+      annexKey: annex.annex_key,
+      title: annex.title.trim(),
+      subtitle: annex.subtitle?.trim() ?? "",
+      leftHeader: annex.left_header.trim(),
+      rightHeader: annex.right_header.trim(),
+      rows: rows.map((row) => ({
+        rowKey: row.row_key,
+        itemCode: row.item_code?.trim() ?? "",
+        description: row.description.trim(),
+        amountDisplay: row.amount_display?.trim() ?? "",
+        note: row.note?.trim() ?? "",
+        columns: Array.isArray(row.columns) ? row.columns.map((value) => String(value ?? "")) : [],
+        sortOrder: row.sort_order,
+      })),
+    })
+  }
+
   console.info(`${READING_LOG_PREFIX} leitura pronta`, {
     lawId: book.lawId,
     nodes: nodes.length,
     audios: audioByNode.size,
+    annexes: annexes.length,
   })
 
-  return { lawId: book.lawId, versionId, title: book.title, acronym: book.acronym, nodes }
+  return { lawId: book.lawId, versionId, title: book.title, acronym: book.acronym, nodes, annexes }
 }
 
 export async function loadLawReading(book: BibliotecaBook): Promise<LawReading> {

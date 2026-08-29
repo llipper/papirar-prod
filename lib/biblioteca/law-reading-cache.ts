@@ -3,6 +3,9 @@ import type { LawReading } from "./reading-service"
 const DATABASE_NAME = "papirar-reading-cache"
 const STORE_NAME = "law-readings"
 const DATABASE_VERSION = 1
+// Incrementar quando a estrutura remota de uma lei for ampliada e o cache
+// anterior puder não conter os novos títulos, capítulos ou seções.
+const CACHE_CONTENT_REVISION = "2026-08-26-02"
 
 type CachedLawReading = {
   key: string
@@ -13,7 +16,7 @@ type CachedLawReading = {
 const memoryCache = new Map<string, CachedLawReading>()
 
 export function createLawReadingCacheKey(lawId: string, version: string, scope: string) {
-  return `${lawId}::${version}::${scope}`
+  return `${CACHE_CONTENT_REVISION}::${lawId}::${version}::${scope}`
 }
 
 function canUseIndexedDb() {
