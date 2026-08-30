@@ -43,6 +43,11 @@ export function BibliotecaCategorySection({
   const handlePointerDown = (event: PointerEvent<HTMLDivElement>) => {
     if (event.pointerType === "mouse" && event.button !== 0) return
 
+    // The book link must remain a normal interactive element. Starting the
+    // carousel drag from it makes the cover feel like it is being lifted and
+    // can swallow the user's scroll/click gesture.
+    if (event.target instanceof HTMLElement && event.target.closest("a")) return
+
     const scroller = scrollerRef.current
     if (!scroller) return
 
