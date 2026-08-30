@@ -4,30 +4,39 @@ import Link from "next/link"
 import { useState } from "react"
 
 import { AuthPageShell } from "@/components/auth/auth-page-shell"
+import { AuthFeedback } from "@/components/auth/auth-feedback"
 import { Button } from "@/components/ui/button"
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { requestPasswordReset } from "@/lib/auth/auth-service"
+import { authErrorMessage, requestPasswordReset } from "@/lib/auth/auth-service"
 import { normalizeEmail, validateEmail } from "@/lib/auth/validators"
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("")
   const [feedback, setFeedback] = useState<string>()
+  const [isError, setIsError] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const validationError = validateEmail(email)
     if (validationError) {
+      setIsError(true)
       setFeedback(validationError)
       return
     }
     setIsSubmitting(true)
+    setIsError(false)
+    setFeedback(undefined)
     try {
-      await requestPasswordReset(normalizeEmail(email))
+      const { error } = await requestPasswordReset(normalizeEmail(email))
+      if (error) throw error
+      setFeedback("Se existir uma conta para esse e-mail, enviaremos as instruções.")
+    } catch (error) {
+      setIsError(true)
+      setFeedback(authErrorMessage(error, "Não foi possível enviar as instruções agora."))
     } finally {
       setIsSubmitting(false)
-      setFeedback("Se existir uma conta para esse e-mail, enviaremos as instruções.")
     }
   }
 
@@ -35,7 +44,7 @@ export default function ForgotPasswordPage() {
     <AuthPageShell title="Recuperar senha" description="Informe seu e-mail para receber um link seguro de acesso.">
       <form onSubmit={handleSubmit} noValidate>
         <FieldGroup>
-          {feedback && <div role="status" className="text-sm text-muted-foreground">{feedback}</div>}
+          <AuthFeedback message={feedback} tone={isError ? "error" : "success"} />
           <Field>
             <FieldLabel htmlFor="email">E-mail</FieldLabel>
             <Input id="email" type="email" inputMode="email" autoComplete="email" placeholder="voce@exemplo.com" value={email} onChange={(event) => setEmail(event.target.value)} disabled={isSubmitting} />

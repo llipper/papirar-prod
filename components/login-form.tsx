@@ -27,6 +27,7 @@ export function LoginForm() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [feedback, setFeedback] = useState<string>()
   const [isError, setIsError] = useState(false)
+  const [submitState, setSubmitState] = useState<"idle" | "success" | "error">("idle")
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -34,17 +35,23 @@ export function LoginForm() {
       validateEmail(email) ?? validateLoginPassword(password)
     if (validationError) {
       setIsError(true)
+      setSubmitState("error")
       setFeedback(validationError)
       return
     }
     setIsSubmitting(true)
+    setSubmitState("idle")
     setFeedback(undefined)
     try {
       const { error } = await signInWithEmail(normalizeEmail(email), password)
       if (error) throw error
-      window.location.assign("/dashboard")
+      setIsError(false)
+      setSubmitState("success")
+      setFeedback("Login realizado com sucesso. Redirecionando...")
+      window.setTimeout(() => window.location.assign("/dashboard"), 700)
     } catch (error) {
       setIsError(true)
+      setSubmitState("error")
       setFeedback(authErrorMessage(error, "Não foi possível entrar agora."))
     } finally {
       setIsSubmitting(false)
@@ -54,18 +61,6 @@ export function LoginForm() {
   return (
     <form onSubmit={handleSubmit} noValidate>
       <FieldGroup>
-        {feedback && (
-          <div
-            role="alert"
-            className={
-              isError
-                ? "text-sm text-destructive"
-                : "text-sm text-muted-foreground"
-            }
-          >
-            {feedback}
-          </div>
-        )}
         <Field>
           <Button
             type="button"
@@ -129,9 +124,18 @@ export function LoginForm() {
           </div>
         </Field>
         <Field>
-          <Button type="submit" disabled={isSubmitting} className="w-full">
-            {isSubmitting ? AUTH_COPY.login.submitting : AUTH_COPY.login.submit}
+          <Button type="submit" disabled={isSubmitting || submitState === "success"} className="w-full">
+            {isSubmitting
+              ? AUTH_COPY.login.submitting
+              : submitState === "success"
+                ? "Login realizado ✓"
+                : submitState === "error"
+                  ? "Tentar novamente"
+                  : AUTH_COPY.login.submit}
           </Button>
+          {feedback && isError && (
+            <span className="sr-only" role="alert">{feedback}</span>
+          )}
         </Field>
         <FieldDescription className="text-center">
           {AUTH_COPY.login.prompt}{" "}
