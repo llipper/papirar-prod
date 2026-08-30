@@ -137,7 +137,7 @@ export function BibliotecaCategorySection({
           onPointerUp={stopDragging}
           onPointerCancel={stopDragging}
           onPointerLeave={stopDragging}
-          className="relative z-0 flex h-full min-w-0 max-w-full cursor-grab touch-pan-x select-none items-start gap-3 overflow-x-auto px-3 pb-5 pt-2 active:cursor-grabbing [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:gap-4 sm:px-4"
+          className="relative z-0 flex h-full min-w-0 max-w-full cursor-grab touch-pan-x select-none items-start gap-3 overflow-x-auto px-3 pt-2 active:cursor-grabbing [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:gap-4 sm:px-4"
         >
           {books.map((book, index) => (
             <BibliotecaBookCard key={book.id} book={book} index={index} />
