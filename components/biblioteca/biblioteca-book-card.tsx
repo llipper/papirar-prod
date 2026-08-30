@@ -30,7 +30,7 @@ export function BibliotecaBookCard({
     <Link
       href={`/dashboard/biblioteca/${book.id}`}
       className={cn(
-        "group relative flex aspect-[2/3] h-auto w-[124px] shrink-0 flex-col overflow-hidden rounded-[2px] text-left shadow-md transition-transform hover:-translate-y-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:w-[142px]",
+        "group relative flex aspect-[2/3] h-auto w-[124px] shrink-0 flex-col overflow-hidden rounded-[2px] text-left shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:w-[142px]",
         book.coverPath ? "bg-muted" : "p-3.5 sm:p-4",
         coverColors[index % coverColors.length]
       )}
