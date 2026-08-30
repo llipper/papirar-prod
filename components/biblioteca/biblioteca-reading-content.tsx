@@ -456,6 +456,13 @@ export function BibliotecaReadingContent({
           className="fixed z-50 flex min-w-[220px] flex-col rounded-2xl border bg-background p-1.5 shadow-xl"
           style={{ top: selection.top, left: selection.left }}
           onMouseDown={(event) => event.preventDefault()}
+          onWheel={(event) => {
+            readingContainerRef.current?.scrollBy({
+              top: event.deltaY,
+              left: event.deltaX,
+              behavior: "auto",
+            })
+          }}
         >
           <Button
             variant="ghost"
