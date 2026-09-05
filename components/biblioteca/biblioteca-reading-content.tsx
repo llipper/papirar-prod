@@ -90,10 +90,14 @@ export function BibliotecaReadingContent({
   bookId,
   initialNodeKey,
   initialSelectedText,
+  adminBanner,
+  adminNodeActions,
 }: {
   bookId: string
   initialNodeKey?: string
   initialSelectedText?: string
+  adminBanner?: ReactNode
+  adminNodeActions?: (node: ReadingNode) => ReactNode
 }) {
   const book = useMemo(
     () => bibliotecaBooks.find((item) => item.id === bookId),
@@ -117,6 +121,8 @@ export function BibliotecaReadingContent({
   useEffect(() => {
     let cancelled = false
     if (!book) {
+      // A rota pode mudar para um ID inválido durante a navegação.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setError("Obra não encontrada.")
       return
     }
@@ -418,6 +424,7 @@ export function BibliotecaReadingContent({
               {reading.title}
             </h2>
           </div>
+          {adminBanner ? <div className="mb-8">{adminBanner}</div> : null}
           <article className="space-y-7">
             {reading.nodes.map((node) => (
               <div
@@ -425,6 +432,11 @@ export function BibliotecaReadingContent({
                 id={`node-${node.nodeKey}`}
                 data-node-key={node.nodeKey}
               >
+                {adminNodeActions ? (
+                  <div className="mb-1 flex justify-end gap-1">
+                    {adminNodeActions(node)}
+                  </div>
+                ) : null}
                 <ReadingNodeView
                   node={node}
                   readingPresentation={readingPresentation}

@@ -200,7 +200,7 @@ async function loadLawReadingFromRemote(book: BibliotecaBook): Promise<LawReadin
   const version = encodeURIComponent(book.version)
   const scope = encodeURIComponent(book.scope)
   const versionRows = await query<{ id: string }[]>(
-    `law_versions?select=id&law_id=eq.${lawId}&version_label=eq.${version}&scope_key=eq.${scope}&status=eq.draft&limit=1`
+    `law_versions?select=id&law_id=eq.${lawId}&version_label=eq.${version}&scope_key=eq.${scope}&status=eq.published&limit=1`
   )
   const versionId = versionRows[0]?.id
   if (!versionId) {
@@ -208,7 +208,7 @@ async function loadLawReadingFromRemote(book: BibliotecaBook): Promise<LawReadin
       lawId: book.lawId,
       version: book.version,
       scope: book.scope,
-      expectedStatus: "draft",
+      expectedStatus: "published",
     })
     throw new Error("Versão da lei não encontrada.")
   }
@@ -234,7 +234,7 @@ async function loadLawReadingFromRemote(book: BibliotecaBook): Promise<LawReadin
     text_content: string | null
     sort_order: number
   }>(
-    `legal_node_versions?select=node_key,epigraphe,text_content,sort_order&law_version_id=eq.${encodeURIComponent(versionId)}&order=sort_order.asc`
+    `legal_node_versions?select=node_key,epigraphe,text_content,sort_order&law_version_id=eq.${encodeURIComponent(versionId)}&revoked_at=is.null&order=sort_order.asc`
   )
 
   const audioRows = await query<

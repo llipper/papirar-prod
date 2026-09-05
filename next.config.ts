@@ -23,6 +23,13 @@ const nextConfig: NextConfig = {
       { pathname: "/mock/**", search: "" },
       { pathname: "/logo.svg", search: "" },
     ],
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "*.supabase.co",
+        pathname: "/storage/v1/object/public/capas/**",
+      },
+    ],
   },
   async headers() {
     return [{

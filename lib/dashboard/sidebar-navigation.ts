@@ -4,6 +4,7 @@ import {
   HighlighterIcon,
   HouseIcon,
   LogOutIcon,
+  ShieldCheckIcon,
   Settings2Icon,
   UserCircleIcon,
 } from "lucide-react"
@@ -17,6 +18,7 @@ export const sidebarNavigation = {
     { title: "Perfil", href: "/dashboard/perfil", icon: UserCircleIcon },
   ],
   footer: [
+    { title: "Administração", href: "/dashboard/administracao", icon: ShieldCheckIcon },
     {
       title: "Configuração",
       href: "/dashboard/configuracao",

@@ -70,7 +70,32 @@ const coverByBookId: Record<string, string> = {
 }
 
 // Incrementar quando uma capa for substituída mantendo o mesmo nome do arquivo.
-const COVER_ASSET_VERSION = "2026-08-25-03"
+const COVER_ASSET_VERSION = "2026-08-30-01"
+const SUPABASE_STORAGE_BUCKET = "capas"
+const SUPABASE_STORAGE_BASE = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, "")
+
+// O Storage não aceita acentos em chaves de objetos. O nome exibido no catálogo
+// continua igual; somente o nome físico do arquivo é normalizado no bucket.
+const storageCoverNameByLocalName: Record<string, string> = {
+  "Convenção Americana de Direitos Humanos.png":
+    "convencao_americana_direitos_humanos.png",
+  "Convenção Contra a Tortura.png": "convencao_contra_tortura.png",
+  "Convenção sobre os Direitos das Pessoas com Deficiência.png":
+    "convencao_direitos_pessoas_deficiencia.png",
+  "Pacto Internacional dos Direitos Civis e Políticos.png":
+    "pacto_internacional_direitos_civis_politicos.png",
+  "Pacto Internacional dos Direitos Econômicos, Sociais e Culturais.png":
+    "pacto_internacional_direitos_economicos_sociais_culturais.png",
+}
+
+function coverSource(localPath: string) {
+  const localName = localPath.replace(/^\/capas\//, "")
+  const storageName = storageCoverNameByLocalName[localName] ?? localName
+  if (!SUPABASE_STORAGE_BASE) {
+    return `${localPath}?v=${COVER_ASSET_VERSION}`
+  }
+  return `${SUPABASE_STORAGE_BASE}/storage/v1/object/public/${SUPABASE_STORAGE_BUCKET}/${encodeURIComponent(storageName)}?v=${COVER_ASSET_VERSION}`
+}
 
 export const bibliotecaBooks: BibliotecaBook[] = [
   [
@@ -305,6 +330,16 @@ export const bibliotecaBooks: BibliotecaBook[] = [
     "documento_completo",
     "treaty",
   ],
+  [
+    "38",
+    "Livro de Teste — Estrutura Editorial",
+    "TESTE",
+    "Leis",
+    "2026",
+    "livro_teste",
+    "2026-08-30",
+    "documento_completo",
+  ],
 ].map(
   ([
     id,
@@ -322,9 +357,7 @@ export const bibliotecaBooks: BibliotecaBook[] = [
     acronym,
     category: category as BibliotecaCategory,
     updatedAt,
-    coverPath: coverByBookId[id]
-      ? `${coverByBookId[id]}?v=${COVER_ASSET_VERSION}`
-      : undefined,
+    coverPath: coverByBookId[id] ? coverSource(coverByBookId[id]) : undefined,
     lawId,
     version,
     scope,
