@@ -66,23 +66,21 @@ export function SignupForm() {
     setFeedback(undefined)
 
     try {
-      const { session, error } = await createAccount(
+      const response = await createAccount(
         name.trim(),
         normalizedEmail,
         password,
       )
 
-      if (error) {
-        throw error
+      if (response.error) {
+        throw response.error
       }
 
       setIsError(false)
       setSubmitState("success")
 
       setFeedback(
-        session
-          ? "Conta criada com sucesso. Você já está conectado."
-          : "Conta criada com sucesso. Verifique seu e-mail antes de entrar.",
+        "Conta criada com sucesso. Verifique seu e-mail para confirmar o cadastro.",
       )
 
       setName("")
@@ -165,7 +163,9 @@ export function SignupForm() {
               variant="ghost"
               size="icon"
               className="absolute top-1/2 right-1 -translate-y-1/2"
-              onClick={() => setShowPassword((visible) => !visible)}
+              onClick={() =>
+                setShowPassword((visible) => !visible)
+              }
               disabled={isSubmitting}
               aria-label={
                 showPassword
@@ -191,7 +191,11 @@ export function SignupForm() {
             <Input
               id="confirmation"
               name="confirmation"
-              type={showConfirmation ? "text" : "password"}
+              type={
+                showConfirmation
+                  ? "text"
+                  : "password"
+              }
               autoComplete="new-password"
               placeholder="Repita sua senha"
               value={confirmation}
@@ -217,7 +221,11 @@ export function SignupForm() {
                   : "Mostrar confirmação"
               }
             >
-              {showConfirmation ? <EyeOff /> : <Eye />}
+              {showConfirmation ? (
+                <EyeOff />
+              ) : (
+                <Eye />
+              )}
             </Button>
           </div>
         </Field>
