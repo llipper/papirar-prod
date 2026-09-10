@@ -1,14 +1,14 @@
 import {
   GoogleAuthProvider,
   createUserWithEmailAndPassword,
-  sendEmailVerification,
-  sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signInWithPopup,
   updateProfile,
 } from "firebase/auth"
 
 import { firebaseAuth } from "@/lib/firebase/client"
+
+const authEmailApiUrl = (process.env.NEXT_PUBLIC_CLOUDFLARE_API_URL ?? "https://papirar-api.papirar-api-worker.workers.dev").replace(/\/$/, "")
 
 export async function signInWithEmail(email: string, password: string) {
   try {
@@ -23,7 +23,12 @@ export async function signInWithGoogle() {
   try {
     const provider = new GoogleAuthProvider()
     provider.setCustomParameters({ prompt: "select_account" })
-    await signInWithPopup(firebaseAuth, provider)
+    const credential = await signInWithPopup(firebaseAuth, provider)
+    // The Worker enforces one welcome e-mail per account. Calling it here also
+    // welcomes accounts created before this feature was deployed.
+    void requestAuthEmail("/auth/welcome", await credential.user.getIdToken()).catch((error) => {
+      console.warn("[Papirar][Auth] welcome e-mail was not sent", error)
+    })
     return { error: null }
   } catch (error) {
     return { error }
@@ -34,7 +39,7 @@ export async function createAccount(name: string, email: string, password: strin
   try {
     const credential = await createUserWithEmailAndPassword(firebaseAuth, email, password)
     await updateProfile(credential.user, { displayName: name.trim() })
-    await sendEmailVerification(credential.user)
+    await requestAuthEmail("/auth/email-verification", await credential.user.getIdToken())
     await firebaseAuth.signOut()
     return { error: null }
   } catch (error) {
@@ -44,11 +49,23 @@ export async function createAccount(name: string, email: string, password: strin
 
 export async function requestPasswordReset(email: string) {
   try {
-    await sendPasswordResetEmail(firebaseAuth, email)
+    await requestAuthEmail("/auth/password-reset", undefined, { email })
     return { error: null }
   } catch (error) {
     return { error }
   }
+}
+
+async function requestAuthEmail(path: string, token?: string, body?: Record<string, string>) {
+  const response = await fetch(`${authEmailApiUrl}${path}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  })
+  if (!response.ok) throw new Error("Não foi possível enviar o e-mail agora.")
 }
 
 export function authErrorMessage(error: unknown, fallback: string) {
