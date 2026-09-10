@@ -22,7 +22,7 @@ function newNodeKey(lawId: string, nodeType: string) {
 export function AdministrationReadingPage({ bookId }: { bookId: string }) {
   const router = useRouter()
   const book = bibliotecaBooks.find((item) => item.id === bookId)
-  const isAdmin = currentUserIsAdmin()
+  const [isAdmin, setIsAdmin] = useState<boolean | null>(null)
   const [record, setRecord] = useState<AdminLaw | null>(null)
   const [versionId, setVersionId] = useState<string | null>(null)
   const [nodes, setNodes] = useState<AdminLegalNode[]>([])
@@ -33,6 +33,10 @@ export function AdministrationReadingPage({ bookId }: { bookId: string }) {
   const [newType, setNewType] = useState("artigo")
 
   useEffect(() => {
+    if (isAdmin === null) {
+      void currentUserIsAdmin().then(setIsAdmin).catch(() => setIsAdmin(false))
+      return
+    }
     if (!isAdmin || !book?.lawId) { // eslint-disable-next-line react-hooks/set-state-in-effect
       setLoading(false)
       return
@@ -110,6 +114,7 @@ export function AdministrationReadingPage({ bookId }: { bookId: string }) {
     finally { setSaving(null) }
   }
 
+  if (isAdmin === null) return <div className="p-8 text-sm text-muted-foreground">Validando permissão…</div>
   if (!isAdmin) return <div className="flex min-h-screen items-center justify-center p-6"><Alert className="max-w-xl"><ShieldAlert /><AlertTitle>Acesso restrito</AlertTitle><AlertDescription>Esta área exige uma conta administradora.</AlertDescription></Alert></div>
   if (!book) return <div className="p-6"><Alert variant="destructive"><CircleAlert /><AlertTitle>Livro não encontrado</AlertTitle></Alert></div>
   if (loading) return <div className="p-8 text-sm text-muted-foreground">Carregando texto para edição…</div>

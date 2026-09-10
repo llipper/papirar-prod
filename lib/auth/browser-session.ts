@@ -1,28 +1,20 @@
-export const AUTH_SESSION_STORAGE_KEY = "papirar.auth.session"
+import { onAuthStateChanged, signOut, type User } from "firebase/auth"
 
-type StoredSession = { access_token?: string }
+import { firebaseAuth } from "@/lib/firebase/client"
+
+export function waitForBrowserSession() {
+  return new Promise<User | null>((resolve) => {
+    const unsubscribe = onAuthStateChanged(firebaseAuth, (user) => {
+      unsubscribe()
+      resolve(user)
+    })
+  })
+}
 
 export function hasLiveBrowserSession() {
-  if (typeof window === "undefined") return false
-  const raw = window.localStorage.getItem(AUTH_SESSION_STORAGE_KEY)
-  if (!raw) return false
-
-  try {
-    const token = (JSON.parse(raw) as StoredSession).access_token
-    if (!token) return false
-    const payload = token.split(".")[1]
-    if (!payload) return false
-    const decoded = JSON.parse(
-      window.atob(payload.replace(/-/g, "+").replace(/_/g, "/"))
-    ) as { exp?: number }
-    return typeof decoded.exp !== "number" || decoded.exp * 1000 > Date.now()
-  } catch {
-    return false
-  }
+  return firebaseAuth.currentUser !== null
 }
 
 export function removeBrowserSession() {
-  if (typeof window !== "undefined") {
-    window.localStorage.removeItem(AUTH_SESSION_STORAGE_KEY)
-  }
+  void signOut(firebaseAuth)
 }

@@ -13,7 +13,11 @@ import {
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { AUTH_COPY } from "@/lib/auth/constants"
-import { authErrorMessage, signInWithEmail } from "@/lib/auth/auth-service"
+import {
+  authErrorMessage,
+  signInWithEmail,
+  signInWithGoogle,
+} from "@/lib/auth/auth-service"
 import {
   normalizeEmail,
   validateEmail,
@@ -28,6 +32,21 @@ export function LoginForm() {
   const [feedback, setFeedback] = useState<string>()
   const [isError, setIsError] = useState(false)
   const [submitState, setSubmitState] = useState<"idle" | "success" | "error">("idle")
+
+  async function handleGoogleSignIn() {
+    setIsSubmitting(true)
+    setFeedback(undefined)
+    try {
+      const { error } = await signInWithGoogle()
+      if (error) throw error
+      window.location.assign("/dashboard")
+    } catch (error) {
+      setIsError(true)
+      setFeedback(authErrorMessage(error, "Não foi possível entrar com Google."))
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -66,10 +85,8 @@ export function LoginForm() {
             type="button"
             variant="outline"
             className="h-[52px] w-full gap-[10px] rounded-[18px]"
-            onClick={() => {
-              setIsError(true)
-              setFeedback(AUTH_COPY.login.googleUnavailable)
-            }}
+            onClick={handleGoogleSignIn}
+            disabled={isSubmitting}
           >
             <span className="font-heading text-[18px] leading-none font-black">G</span>
             <span className="font-heading text-sm leading-none font-extrabold">

@@ -7,6 +7,8 @@ import type { MouseEvent } from "react"
 import type { ReadingAudio } from "@/lib/biblioteca/reading-service"
 
 const WAVEFORM = [3, 5, 8, 5, 10, 6, 12, 8, 4, 9, 6, 11, 5, 8, 4, 7, 3, 6]
+let activeAudio: HTMLAudioElement | null = null
+const AUDIO_STOP_EVENT = "papirar:stop-other-audio"
 
 export function ReadingAudioButton({ audio }: { audio: ReadingAudio }) {
   const audioRef = useRef<HTMLAudioElement>(null)
@@ -28,14 +30,25 @@ export function ReadingAudioButton({ audio }: { audio: ReadingAudio }) {
     }
     const onLoadedMetadata = () => setDuration(Number.isFinite(element.duration) ? element.duration : 0)
     const onTimeUpdate = () => setCurrentTime(element.currentTime)
+    const onOtherAudioStarted = (event: Event) => {
+      if ((event as CustomEvent<HTMLAudioElement>).detail === element) return
+      element.pause()
+      element.currentTime = 0
+      setCurrentTime(0)
+      setPlaying(false)
+      closePlayer()
+    }
 
     element.addEventListener("ended", onEnded)
     element.addEventListener("loadedmetadata", onLoadedMetadata)
     element.addEventListener("timeupdate", onTimeUpdate)
+    window.addEventListener(AUDIO_STOP_EVENT, onOtherAudioStarted)
     return () => {
       element.removeEventListener("ended", onEnded)
       element.removeEventListener("loadedmetadata", onLoadedMetadata)
       element.removeEventListener("timeupdate", onTimeUpdate)
+      window.removeEventListener(AUDIO_STOP_EVENT, onOtherAudioStarted)
+      if (activeAudio === element) activeAudio = null
     }
   }, [])
 
@@ -44,6 +57,12 @@ export function ReadingAudioButton({ audio }: { audio: ReadingAudio }) {
     if (!element) return
 
     if (element.paused) {
+      if (activeAudio && activeAudio !== element) {
+        activeAudio.pause()
+        activeAudio.currentTime = 0
+      }
+      activeAudio = element
+      window.dispatchEvent(new CustomEvent<HTMLAudioElement>(AUDIO_STOP_EVENT, { detail: element }))
       element.playbackRate = playbackRate
       await element.play()
       setPlaying(true)
@@ -51,6 +70,7 @@ export function ReadingAudioButton({ audio }: { audio: ReadingAudio }) {
       setPlayerVisible(true)
     } else {
       element.pause()
+      if (activeAudio === element) activeAudio = null
       setPlaying(false)
     }
   }
@@ -68,6 +88,7 @@ export function ReadingAudioButton({ audio }: { audio: ReadingAudio }) {
     if (!element) return
     element.pause()
     element.currentTime = 0
+    if (activeAudio === element) activeAudio = null
     setCurrentTime(0)
     setPlaying(false)
     closePlayer()
@@ -104,14 +125,6 @@ export function ReadingAudioButton({ audio }: { audio: ReadingAudio }) {
 
       {playerVisible && (
         <span className={`absolute bottom-full left-0 z-30 mb-1 flex h-7 origin-bottom-left items-center gap-1 rounded-lg border border-border/80 bg-background px-1.5 shadow-lg transition-all duration-200 ${playerClosing ? "animate-out fade-out zoom-out-95" : "animate-in fade-in zoom-in-95"}`}>
-          <button
-            type="button"
-            onClick={toggle}
-            className="inline-flex size-5 shrink-0 items-center justify-center rounded-full bg-foreground text-background hover:opacity-80"
-            aria-label={`Pausar ${audio.title}`}
-          >
-            {playing ? <Pause className="size-2.5 fill-current" /> : <Play className="size-2.5 translate-x-px fill-current" />}
-          </button>
           <button
             type="button"
             onClick={seek}

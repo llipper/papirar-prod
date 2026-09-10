@@ -3,7 +3,7 @@
 import { usePathname, useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 
-import { hasLiveBrowserSession, removeBrowserSession } from "@/lib/auth/browser-session"
+import { waitForBrowserSession } from "@/lib/auth/browser-session"
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter()
@@ -11,12 +11,18 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   const [authorized, setAuthorized] = useState(false)
 
   useEffect(() => {
-    if (!hasLiveBrowserSession()) {
-      removeBrowserSession()
-      router.replace(`/login?next=${encodeURIComponent(pathname)}`)
-      return
+    let active = true
+    void waitForBrowserSession().then((user) => {
+      if (!active) return
+      if (!user) {
+        router.replace(`/login?next=${encodeURIComponent(pathname)}`)
+        return
+      }
+      setAuthorized(true)
+    })
+    return () => {
+      active = false
     }
-    setAuthorized(true)
   }, [pathname, router])
 
   if (!authorized) return <div className="min-h-screen bg-background" aria-busy="true" />

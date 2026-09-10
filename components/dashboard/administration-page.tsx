@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import Link from "next/link"
 import { Check, CircleAlert, LockKeyhole, RefreshCw, ShieldCheck, Upload, BookOpen } from "lucide-react"
 
@@ -19,6 +19,7 @@ import {
   type AdminLaw,
   type AdminLawVersion,
   type AdminLegalNode,
+  currentFirebaseUserIsAdmin,
   listAdminLaws,
   listAdminLegalNodes,
   updateAdminLaw,
@@ -28,14 +29,7 @@ import {
 } from "@/lib/admin/legal-catalog-admin-service"
 
 export function currentUserIsAdmin() {
-  if (typeof window === "undefined") return false
-  try {
-    const raw = window.localStorage.getItem("papirar.auth.session")
-    const session = raw ? (JSON.parse(raw) as { user?: { app_metadata?: { role?: string } } }) : null
-    return session?.user?.app_metadata?.role === "admin"
-  } catch {
-    return false
-  }
+  return currentFirebaseUserIsAdmin()
 }
 
 function statusLabel(status: AdminLawVersion["status"]) {
@@ -133,7 +127,7 @@ export function AdministrationPage() {
   const [laws, setLaws] = useState<AdminLaw[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const isAdmin = useMemo(() => currentUserIsAdmin(), [])
+  const [isAdmin, setIsAdmin] = useState<boolean | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -142,6 +136,10 @@ export function AdministrationPage() {
   }, [])
 
   useEffect(() => {
+    if (isAdmin === null) {
+      void currentUserIsAdmin().then(setIsAdmin).catch(() => setIsAdmin(false))
+      return
+    }
     if (!isAdmin) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setLoading(false)
@@ -150,13 +148,17 @@ export function AdministrationPage() {
     void load()
   }, [isAdmin, load])
 
+  if (isAdmin === null) {
+    return <DashboardShell title="Administração" description="Gestão do catálogo jurídico."><Card><CardContent className="p-6 text-sm text-muted-foreground">Validando permissão...</CardContent></Card></DashboardShell>
+  }
+
   if (!isAdmin) {
-    return <DashboardShell title="Administração" description="Gestão do catálogo jurídico."><Card className="mx-auto w-full max-w-xl"><CardHeader><div className="flex size-10 items-center justify-center rounded-2xl bg-muted"><LockKeyhole /></div><CardTitle>Acesso restrito</CardTitle><CardDescription>Esta área exige uma conta promovida como administradora.</CardDescription></CardHeader><CardContent><p className="text-sm text-muted-foreground">Defina <code>app_metadata.role = admin</code> no usuário administrador do Supabase Auth. A permissão de edição também é protegida por RLS no banco.</p></CardContent></Card></DashboardShell>
+    return <DashboardShell title="Administração" description="Gestão do catálogo jurídico."><Card className="mx-auto w-full max-w-xl"><CardHeader><div className="flex size-10 items-center justify-center rounded-2xl bg-muted"><LockKeyhole /></div><CardTitle>Acesso restrito</CardTitle><CardDescription>Esta área exige uma conta promovida como administradora.</CardDescription></CardHeader><CardContent><p className="text-sm text-muted-foreground">Defina a custom claim <code>admin = true</code> no usuário do Firebase Auth. As gravações também são protegidas pelas regras do Firestore.</p></CardContent></Card></DashboardShell>
   }
 
   return <DashboardShell title="Administração" description="Atualize e revogue versões do catálogo jurídico." action={<Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}><RefreshCw className={loading ? "animate-spin" : ""} /> Atualizar</Button>}>
     <div className="grid gap-4">
-      <Alert><ShieldCheck /><AlertTitle>Catálogo sob controle</AlertTitle><AlertDescription>As alterações ficam registradas diretamente no Supabase. Uma versão revogada deixa de ser oferecida para leitura.</AlertDescription></Alert>
+      <Alert><ShieldCheck /><AlertTitle>Catálogo sob controle</AlertTitle><AlertDescription>As alterações ficam registradas diretamente no Firestore. Uma versão revogada deixa de ser oferecida para leitura.</AlertDescription></Alert>
       <div className="grid gap-3 sm:grid-cols-3"><Card size="sm"><CardHeader className="px-4"><CardDescription>Livros</CardDescription><CardTitle className="text-2xl">{laws.length}</CardTitle></CardHeader></Card><Card size="sm"><CardHeader className="px-4"><CardDescription>Versões ativas</CardDescription><CardTitle className="text-2xl">{laws.reduce((total, law) => total + law.versions.filter((version) => version.status !== "archived").length, 0)}</CardTitle></CardHeader></Card><Card size="sm"><CardHeader className="px-4"><CardDescription>Novas atualizações</CardDescription><CardTitle className="text-2xl">{laws.reduce((total, law) => total + law.versions.filter(isRecentUpdate).length, 0)}</CardTitle></CardHeader></Card></div>
       {error ? <Alert variant="destructive"><CircleAlert /><AlertTitle>Não foi possível carregar</AlertTitle><AlertDescription>{error}</AlertDescription></Alert> : null}
       {loading ? <Card><CardContent className="p-6 text-sm text-muted-foreground">Carregando livros...</CardContent></Card> : null}

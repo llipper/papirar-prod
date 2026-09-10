@@ -1,5 +1,7 @@
 import type { BibliotecaBook } from "./catalog-data"
-import { getSupabasePublicConfig } from "@/lib/supabase/public-config"
+import { collection, getDocs, query, where } from "firebase/firestore"
+import { firestore } from "@/lib/firebase/client"
+import { getAuth } from "firebase/auth"
 import {
   createLawReadingCacheKey,
   readCachedLawReading,
@@ -52,125 +54,15 @@ export type LawReading = {
   annexes: ReadingAnnex[]
 }
 
-type Session = { access_token?: string }
-
-class SessionExpiredError extends Error {
-  constructor() {
-    super("Sua sessão expirou. Faça login novamente.")
-    this.name = "SessionExpiredError"
-  }
-}
-
 const READING_LOG_PREFIX = "[Papirar][Leitura]"
 
-function getConfig() {
-  const { url, publicKey } = getSupabasePublicConfig()
-  return { url, anonKey: publicKey }
-}
-
-function expireBrowserSession() {
-  if (typeof window === "undefined") return
-
-  window.localStorage.removeItem("papirar.auth.session")
-  console.warn(`${READING_LOG_PREFIX} sessão expirada; redirecionando para o login`)
-
-  if (!window.location.pathname.startsWith("/login")) {
-    window.location.replace("/login?reason=session_expired")
-  }
-}
-
-function getHeaders() {
-  const { anonKey } = getConfig()
-  let token: string | undefined
-  if (typeof window !== "undefined") {
-    const raw = window.localStorage.getItem("papirar.auth.session")
-    try {
-      token = raw ? (JSON.parse(raw) as Session).access_token : undefined
-    } catch (reason: unknown) {
-      console.error(`${READING_LOG_PREFIX} sessão inválida no armazenamento local`, { reason })
-      expireBrowserSession()
-      throw new SessionExpiredError()
-    }
-  }
-
-  if (!token) {
-    expireBrowserSession()
-    throw new SessionExpiredError()
-  }
-
-  return {
-    apikey: anonKey,
-    Authorization: `Bearer ${token}`,
-  }
-}
-
-async function query<T>(path: string) {
-  const { url } = getConfig()
-  const endpoint = `${url}/rest/v1/${path}`
-  const startedAt = performance.now()
-
-  console.info(`${READING_LOG_PREFIX} consultando`, { path })
-
-  try {
-    const response = await fetch(endpoint, {
-      headers: getHeaders(),
-    })
-    const responseText = await response.text()
-    const durationMs = Math.round(performance.now() - startedAt)
-
-    if (!response.ok) {
-      console.error(`${READING_LOG_PREFIX} Supabase recusou a consulta`, {
-        path,
-        status: response.status,
-        statusText: response.statusText,
-        durationMs,
-        response: responseText.slice(0, 1000),
-      })
-
-      if (
-        response.status === 401 &&
-        (responseText.includes("PGRST303") || responseText.toLowerCase().includes("jwt expired"))
-      ) {
-        expireBrowserSession()
-        throw new SessionExpiredError()
-      }
-
-      throw new Error(`Supabase respondeu ${response.status} ao carregar a lei.`)
-    }
-
-    console.info(`${READING_LOG_PREFIX} consulta concluída`, {
-      path,
-      status: response.status,
-      durationMs,
-      responseBytes: responseText.length,
-    })
-
-    return JSON.parse(responseText) as T
-  } catch (reason: unknown) {
-    if (reason instanceof SessionExpiredError) {
-      throw reason
-    }
-
-    if (reason instanceof Error && reason.message.startsWith("Supabase respondeu")) {
-      throw reason
-    }
-
-    console.error(`${READING_LOG_PREFIX} erro de rede ou JSON`, {
-      path,
-      reason,
-    })
-    throw new Error("Não foi possível conectar ao Supabase para carregar a lei.")
-  }
-}
-
-async function queryAll<T>(path: string) {
-  const pageSize = 1000
-  const rows: T[] = []
-  for (let start = 0; ; start += pageSize) {
-    const page = await query<T[]>(`${path}&offset=${start}&limit=${pageSize}`)
-    rows.push(...page)
-    if (page.length < pageSize) return rows
-  }
+async function firestoreRows<T>(name: string, field: string, value: string): Promise<T[]> {
+  const constraints = [where(field, "==", value)]
+  constraints.push(name === "law_versions" ? where("status", "==", "published") : where("published", "==", true))
+  if (name === "legal_node_versions") constraints.push(where("revoked_at", "==", null))
+  if (name === "lei_audio_assets") constraints.push(where("status", "==", "ready"))
+  const snapshot = await getDocs(query(collection(firestore, name), ...constraints))
+  return snapshot.docs.map((item) => ({ id: item.id, ...item.data() }) as T)
 }
 
 export const LAW_READING_UPDATED_EVENT = "papirar:law-reading-updated"
@@ -196,12 +88,22 @@ async function loadLawReadingFromRemote(book: BibliotecaBook): Promise<LawReadin
     throw new Error("Esta obra ainda não está disponível para leitura.")
   }
 
-  const lawId = encodeURIComponent(book.lawId)
-  const version = encodeURIComponent(book.version)
-  const scope = encodeURIComponent(book.scope)
-  const versionRows = await query<{ id: string }[]>(
-    `law_versions?select=id&law_id=eq.${lawId}&version_label=eq.${version}&scope_key=eq.${scope}&status=eq.published&limit=1`
-  )
+  const catalogLawId = book.lawId
+  const catalogVersion = book.version
+  const catalogScope = book.scope
+  if (!catalogLawId || !catalogVersion || !catalogScope) throw new Error("Metadados da lei incompletos.")
+  const response = await fetch(`${process.env.NEXT_PUBLIC_CLOUDFLARE_API_URL ?? "https://papirar-api.papirar-api-worker.workers.dev"}/catalog/reading?lawId=${encodeURIComponent(catalogLawId)}&version=${encodeURIComponent(catalogVersion)}&scope=${encodeURIComponent(catalogScope)}`)
+  if (!response.ok) throw new Error("Não foi possível carregar o conteúdo da lei.")
+  const catalog = await response.json() as { law: { id: string; title: string; acronym: string }; version: { id: string }; nodes: Array<{ node_key: string; node_type: string; number?: string; label?: string }>; contents: Array<{ node_key: string; epigraphe?: string; text_content?: string; sort_order: number }>; audios: Array<{ node_key?: string; audio_key: string; title: string; public_url: string; duration_ms?: number | null }> }
+  const catalogNodeByKey = new Map(catalog.nodes.map((node) => [node.node_key, node]))
+  const catalogAudioByNode = new Map(catalog.audios.filter((audio) => audio.node_key && audio.public_url).map((audio) => [audio.node_key as string, { key: audio.audio_key, title: audio.title || "Áudio da lei", url: audio.public_url, durationMs: audio.duration_ms ?? null }]))
+  return { lawId: catalog.law.id, versionId: catalog.version.id, title: catalog.law.title, acronym: catalog.law.acronym, nodes: catalog.contents.map((content) => { const node = catalogNodeByKey.get(content.node_key); return { nodeKey: content.node_key, nodeType: node?.node_type ?? "", number: node?.number ?? "", label: node?.label ?? "", epigraphe: content.epigraphe ?? "", text: content.text_content ?? "", sortOrder: content.sort_order, audio: catalogAudioByNode.get(content.node_key) } }), annexes: [] }
+  /* Firestore fallback retained below for rollback during the cutover. */
+
+  const lawId = book.lawId!
+  const versionRows = (await firestoreRows<{ id: string; version_label: string; scope_key: string; status: string }>(
+    "law_versions", "law_id", lawId
+  )).filter((row) => row.version_label === book.version && row.scope_key === book.scope && row.status === "published")
   const versionId = versionRows[0]?.id
   if (!versionId) {
     console.error(`${READING_LOG_PREFIX} versão não encontrada`, {
@@ -218,36 +120,35 @@ async function loadLawReadingFromRemote(book: BibliotecaBook): Promise<LawReadin
     versionId,
   })
 
-  const nodeRows = await queryAll<{
+  const nodeRows = await firestoreRows<{
     node_key: string
     node_type: string
     number: string | null
     label: string | null
-  }>(
-    `legal_nodes?select=node_key,node_type,number,label&law_id=eq.${lawId}&order=node_key.asc`
-  )
+  }>("legal_nodes", "law_id", lawId)
   const nodeByKey = new Map(nodeRows.map((node) => [node.node_key, node]))
 
-  const contentRows = await queryAll<{
+  const contentRows = (await firestoreRows<{
     node_key: string
     epigraphe: string | null
     text_content: string | null
     sort_order: number
-  }>(
-    `legal_node_versions?select=node_key,epigraphe,text_content,sort_order&law_version_id=eq.${encodeURIComponent(versionId)}&revoked_at=is.null&order=sort_order.asc`
-  )
+    revoked_at?: unknown
+  }>("legal_node_versions", "law_version_id", versionId))
+    .filter((row) => row.revoked_at == null)
+    .sort((a, b) => a.sort_order - b.sort_order)
 
-  const audioRows = await query<
-    Array<{
+  const audioRows = (await firestoreRows<{
       node_key: string | null
       audio_key: string
       title: string
       public_url: string
       duration_ms: number | null
-    }>
-  >(
-    `lei_audio_assets?select=node_key,audio_key,title,public_url,duration_ms&law_id=eq.${lawId}&law_version_id=eq.${encodeURIComponent(versionId)}&status=eq.ready`
-  )
+      law_version_id: string
+      status: string
+    }
+  >("lei_audio_assets", "law_id", lawId))
+    .filter((row) => row.law_version_id === versionId && row.status === "ready")
   const audioByNode = new Map(
     audioRows
       .filter((audio) => audio.node_key && audio.public_url)
@@ -279,7 +180,7 @@ async function loadLawReadingFromRemote(book: BibliotecaBook): Promise<LawReadin
     })
     .filter((node): node is ReadingNode => node !== null)
 
-  const annexRows = await queryAll<{
+  const annexRows = (await firestoreRows<{
     id: string
     annex_key: string
     title: string
@@ -287,13 +188,11 @@ async function loadLawReadingFromRemote(book: BibliotecaBook): Promise<LawReadin
     left_header: string
     right_header: string
     sort_order: number
-  }>(
-    `legal_annexes?select=id,annex_key,title,subtitle,left_header,right_header,sort_order&law_version_id=eq.${encodeURIComponent(versionId)}&order=sort_order.asc`
-  )
+  }>("legal_annexes", "law_version_id", versionId)).sort((a, b) => a.sort_order - b.sort_order)
 
   const annexes: ReadingAnnex[] = []
   for (const annex of annexRows) {
-    const rows = await queryAll<{
+    const rows = (await firestoreRows<{
       row_key: string
       item_code: string | null
       description: string
@@ -301,9 +200,7 @@ async function loadLawReadingFromRemote(book: BibliotecaBook): Promise<LawReadin
       note: string | null
       columns: unknown
       sort_order: number
-    }>(
-      `legal_annex_rows?select=row_key,item_code,description,amount_display,note,columns,sort_order&annex_id=eq.${encodeURIComponent(annex.id)}&order=sort_order.asc`
-    )
+    }>("legal_annex_rows", "annex_id", annex.id)).sort((a, b) => a.sort_order - b.sort_order)
 
     annexes.push({
       annexKey: annex.annex_key,
@@ -330,7 +227,7 @@ async function loadLawReadingFromRemote(book: BibliotecaBook): Promise<LawReadin
     annexes: annexes.length,
   })
 
-  return { lawId: book.lawId, versionId, title: book.title, acronym: book.acronym, nodes, annexes }
+  return { lawId: book.lawId!, versionId, title: book.title, acronym: book.acronym, nodes, annexes }
 }
 
 export async function loadLawReading(book: BibliotecaBook): Promise<LawReading> {

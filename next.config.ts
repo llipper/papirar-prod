@@ -3,15 +3,16 @@ import type { NextConfig } from "next"
 const isDevelopment = process.env.NODE_ENV !== "production"
 const contentSecurityPolicy = [
   "default-src 'self'",
-  `script-src 'self'${isDevelopment ? " 'unsafe-eval'" : ""} 'unsafe-inline'`,
+  `script-src 'self'${isDevelopment ? " 'unsafe-eval'" : ""} 'unsafe-inline' https://apis.google.com https://www.gstatic.com`,
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: https://*.supabase.co",
+  "img-src 'self' data: blob: https://*.googleusercontent.com https://*.r2.dev https://*.r2.cloudflarestorage.com",
   "font-src 'self' data:",
-  "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
-  "media-src 'self' blob: https://*.supabase.co https://*.r2.dev https://*.r2.cloudflarestorage.com",
+  "connect-src 'self' https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.workers.dev",
+  "media-src 'self' blob: https://*.r2.dev https://*.r2.cloudflarestorage.com",
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",
+  "frame-src https://accounts.google.com https://*.firebaseapp.com",
   "frame-ancestors 'none'",
 ].join("; ")
 
@@ -23,13 +24,7 @@ const nextConfig: NextConfig = {
       { pathname: "/mock/**", search: "" },
       { pathname: "/logo.svg", search: "" },
     ],
-    remotePatterns: [
-      {
-        protocol: "https",
-        hostname: "*.supabase.co",
-        pathname: "/storage/v1/object/public/capas/**",
-      },
-    ],
+    remotePatterns: [],
   },
   async headers() {
     return [{

@@ -1,5 +1,8 @@
-import { getSupabaseBrowserClient } from "@/lib/supabase/browser-client"
-import { getSupabasePublicConfig } from "@/lib/supabase/public-config"
+import { signOut, updateProfile as updateAuthProfile, type User } from "firebase/auth"
+import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore"
+
+import { waitForBrowserSession } from "@/lib/auth/browser-session"
+import { firebaseAuth, firestore } from "@/lib/firebase/client"
 
 export type UserProfile = {
   id: string
@@ -12,169 +15,122 @@ export type UserProfile = {
   createdAt: string | null
 }
 
-type Session = {
-  access_token?: string
-  user?: { id?: string; email?: string; user_metadata?: { name?: string } }
+type ProfileDocument = {
+  user_id?: string
+  email?: string
+  display_name?: string
+  username?: string
+  bio?: string
+  avatar_url?: string | null
+  profile_color?: string
+  created_at?: { toDate?: () => Date } | string | null
 }
 
-function getSession() {
-  if (typeof window === "undefined") throw new Error("Sessão indisponível.")
-  const raw = window.localStorage.getItem("papirar.auth.session")
-  const session = raw ? (JSON.parse(raw) as Session) : null
-  if (!session?.access_token || !session.user?.id)
-    throw new Error("Sessão expirada.")
-  return session as Required<Pick<Session, "access_token" | "user">>
+async function requireUser() {
+  const user = firebaseAuth.currentUser ?? (await waitForBrowserSession())
+  if (!user) throw new Error("Sessão expirada.")
+  return user
 }
 
-function config() {
-  const { url, publicKey } = getSupabasePublicConfig()
-  return { url, anonKey: publicKey }
+function profileRef(uid: string) {
+  return doc(firestore, "users", uid, "profiles", "main")
 }
 
-function headers(session: Session, extra: Record<string, string> = {}) {
-  return {
-    apikey: config().anonKey,
-    Authorization: `Bearer ${session.access_token}`,
-    ...extra,
+function defaultUsername(user: User) {
+  const base = (user.email?.split("@")[0] || "aluno")
+    .replace(/[^a-z0-9_]/gi, "_")
+    .toLowerCase()
+  return `${base}_${user.uid.replaceAll("-", "").slice(0, 6)}`.slice(0, 30)
+}
+
+function validColor(value: unknown) {
+  const color = String(value ?? "")
+  return /^#[0-9A-Fa-f]{6}$/.test(color) ? color : "#f3f4f6"
+}
+
+function createdAtValue(value: ProfileDocument["created_at"]) {
+  if (typeof value === "string") return value
+  if (value && typeof value.toDate === "function") {
+    return value.toDate().toISOString()
   }
+  return null
 }
 
-function toProfile(
-  row: Record<string, unknown>,
-  session: Session
-): UserProfile {
-  const user = session.user ?? {}
-  const avatarPath =
-    typeof row.avatar_path === "string" ? row.avatar_path : null
+function toProfile(data: ProfileDocument, user: User): UserProfile {
   return {
-    id: String(row.id ?? user.id ?? ""),
-    email: user.email ?? "",
-    displayName: String(
-      row.display_name ??
-        user.user_metadata?.name ??
-        user.email?.split("@")[0] ??
-        "Aluno Papirar"
-    ),
-    username: String(row.username ?? "papirar"),
-    bio: String(row.bio ?? ""),
-    profileColor: /^#[0-9A-Fa-f]{6}$/.test(String(row.profile_color ?? ""))
-      ? String(row.profile_color)
-      : "#f3f4f6",
-    avatarUrl: avatarPath
-      ? `${config().url}/storage/v1/object/public/avatars/${avatarPath}?v=${row.updated_at ?? ""}`
-      : null,
-    createdAt: typeof row.created_at === "string" ? row.created_at : null,
+    id: user.uid,
+    email: user.email ?? data.email ?? "",
+    displayName:
+      data.display_name ||
+      user.displayName ||
+      user.email?.split("@")[0] ||
+      "Aluno Papirar",
+    username: data.username || defaultUsername(user),
+    bio: data.bio || "",
+    avatarUrl: data.avatar_url || user.photoURL || null,
+    profileColor: validColor(data.profile_color),
+    createdAt: createdAtValue(data.created_at) || user.metadata.creationTime || null,
   }
 }
 
 export async function getCurrentProfile() {
-  const session = getSession()
-  const { url } = config()
-  const response = await fetch(
-    `${url}/rest/v1/profiles?id=eq.${encodeURIComponent(session.user.id!)}&select=*`,
-    {
-      headers: headers(session),
-    }
-  )
-  if (!response.ok) throw new Error("Não foi possível carregar seu perfil.")
-  const rows = (await response.json()) as Record<string, unknown>[]
-  if (rows[0]) return toProfile(rows[0], session)
+  const user = await requireUser()
+  const reference = profileRef(user.uid)
+  const snapshot = await getDoc(reference)
+  if (snapshot.exists()) {
+    return toProfile(snapshot.data() as ProfileDocument, user)
+  }
 
-  const email = session.user.email ?? ""
-  const username =
-    `${(email.split("@")[0] || "aluno").replace(/[^a-z0-9_]/gi, "_")}_${session.user.id!.replaceAll("-", "").slice(0, 6)}`
-      .slice(0, 30)
-      .toLowerCase()
-  const createResponse = await fetch(`${url}/rest/v1/profiles`, {
-    method: "POST",
-    headers: headers(session, {
-      "Content-Type": "application/json",
-      Prefer: "return=representation",
-    }),
-    body: JSON.stringify({
-      id: session.user.id,
-      display_name: session.user.user_metadata?.name ?? email.split("@")[0],
-      username,
-      bio: "",
-    }),
-  })
-  if (!createResponse.ok) throw new Error("Não foi possível criar seu perfil.")
-  return toProfile(
-    ((await createResponse.json()) as Record<string, unknown>[])[0],
-    session
-  )
+  const initial: ProfileDocument = {
+    user_id: user.uid,
+    email: user.email ?? "",
+    display_name: user.displayName || user.email?.split("@")[0] || "Aluno Papirar",
+    username: defaultUsername(user),
+    bio: "",
+    avatar_url: user.photoURL,
+    profile_color: "#f3f4f6",
+  }
+  await setDoc(reference, { ...initial, created_at: serverTimestamp(), updated_at: serverTimestamp() })
+  return toProfile(initial, user)
 }
 
 export async function updateProfile(
-  input: Pick<UserProfile, "displayName" | "username" | "bio" | "profileColor">
+  input: Pick<UserProfile, "displayName" | "username" | "bio" | "profileColor">,
 ) {
-  const session = getSession()
-  const { url } = config()
-  const response = await fetch(
-    `${url}/rest/v1/profiles?id=eq.${encodeURIComponent(session.user.id!)}`,
-    {
-      method: "PATCH",
-      headers: headers(session, {
-        "Content-Type": "application/json",
-        Prefer: "return=representation",
-      }),
-      body: JSON.stringify({
-        display_name: input.displayName.trim(),
-        username: input.username.trim(),
-        bio: input.bio.trim(),
-        profile_color: input.profileColor,
-      }),
-    }
+  const user = await requireUser()
+  const normalized = {
+    display_name: input.displayName.trim(),
+    username: input.username.trim().toLowerCase(),
+    bio: input.bio.trim(),
+    profile_color: validColor(input.profileColor),
+  }
+  await setDoc(
+    profileRef(user.uid),
+    { user_id: user.uid, email: user.email ?? "", ...normalized, updated_at: serverTimestamp() },
+    { merge: true },
   )
-  if (!response.ok) throw new Error("Não foi possível salvar seu perfil.")
-  return toProfile(
-    ((await response.json()) as Record<string, unknown>[])[0],
-    session
-  )
+  await updateAuthProfile(user, { displayName: normalized.display_name })
+  return getCurrentProfile()
 }
 
-export async function uploadAvatar(file: File) {
-  const session = getSession()
-  const { url } = config()
-  const extension =
-    file.type === "image/png"
-      ? "png"
-      : file.type === "image/webp"
-        ? "webp"
-        : "jpg"
-  const path = `${session.user.id}/avatar.${extension}`
-  const uploadResponse = await fetch(
-    `${url}/storage/v1/object/avatars/${path}`,
-    {
-      method: "POST",
-      headers: headers(session, {
-        "Content-Type": file.type || "image/jpeg",
-        "x-upsert": "true",
-      }),
-      body: file,
-    }
-  )
-  if (!uploadResponse.ok)
-    throw new Error("Não foi possível atualizar seu avatar.")
-  const updateResponse = await fetch(
-    `${url}/rest/v1/profiles?id=eq.${encodeURIComponent(session.user.id!)}`,
-    {
-      method: "PATCH",
-      headers: headers(session, {
-        "Content-Type": "application/json",
-        Prefer: "return=representation",
-      }),
-      body: JSON.stringify({ avatar_path: path }),
-    }
-  )
-  if (!updateResponse.ok) throw new Error("Não foi possível salvar seu avatar.")
-  return toProfile(
-    ((await updateResponse.json()) as Record<string, unknown>[])[0],
-    session
-  )
+export async function uploadAvatar(file: File): Promise<UserProfile> {
+  const user = await requireUser()
+  const apiUrl = (process.env.NEXT_PUBLIC_CLOUDFLARE_API_URL || "https://papirar-api.regyfelipe-sd.workers.dev").replace(/\/$/, "")
+  const form = new FormData()
+  form.append("file", file)
+  const response = await fetch(`${apiUrl}/profile/avatar`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${await user.getIdToken()}` },
+    body: form,
+  })
+  if (!response.ok) throw new Error(`Não foi possível enviar o avatar (${response.status}).`)
+  const payload = await response.json() as { url?: string; path?: string }
+  if (!payload.url) throw new Error("O serviço de avatar retornou uma resposta inválida.")
+  await setDoc(profileRef(user.uid), { avatar_url: payload.url, avatar_path: payload.path ?? null, updated_at: serverTimestamp() }, { merge: true })
+  await updateAuthProfile(user, { photoURL: payload.url })
+  return getCurrentProfile()
 }
 
 export function clearBrowserSession() {
-  getSupabaseBrowserClient()
-  window.localStorage.removeItem("papirar.auth.session")
+  void signOut(firebaseAuth)
 }

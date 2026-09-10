@@ -77,7 +77,7 @@ export function ProfileHeader({
         <Button
           type="button"
           variant="outline"
-          className="absolute right-3 -bottom-5 h-[32px] rounded-full bg-card px-3 text-xs font-heading font-black"
+          className="absolute right-3 -bottom-5 h-[32px] rounded-full border-black bg-black px-3 text-xs font-heading font-black text-white hover:bg-black/85 hover:text-white dark:border-white dark:bg-white dark:text-black dark:hover:bg-white/85 dark:hover:text-black"
           onClick={onEdit}
         >
           Editar perfil
