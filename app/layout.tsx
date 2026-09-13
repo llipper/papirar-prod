@@ -16,7 +16,7 @@ export const metadata: Metadata = {
     template: "%s | Papirar",
   },
   description:
-    "Estude legislação brasileira com leitura organizada, explicações em áudio e ferramentas para marcações e anotações.",
+    "Papirar: estude leis brasileiras, Constituição Federal e legislação para concursos com leitura organizada, explicações em áudio, marcações e anotações.",
   applicationName: "Papirar",
   keywords: [
     "legislação brasileira",
@@ -24,6 +24,9 @@ export const metadata: Metadata = {
     "direito",
     "constituição federal",
     "concursos públicos",
+    "lei seca",
+    "estudo para concursos",
+    "áudio de leis",
   ],
   authors: [{ name: "Papirar" }],
   creator: "Papirar",
@@ -38,14 +41,14 @@ export const metadata: Metadata = {
     siteName: "Papirar",
     title: "Papirar | Estude leis com clareza",
     description:
-      "Leitura organizada de legislação brasileira, explicações em áudio e ferramentas de estudo.",
+      "Leis brasileiras organizadas para estudar: leitura, explicações em áudio, marcações e revisão.",
     images: [{ url: "/og-papirar.svg", width: 1200, height: 630, alt: "Papirar — Estude leis com clareza" }],
   },
   twitter: {
     card: "summary_large_image",
     title: "Papirar | Estude leis com clareza",
     description:
-      "Leitura organizada de legislação brasileira, explicações em áudio e ferramentas de estudo.",
+      "Leis brasileiras organizadas para estudar: leitura, explicações em áudio, marcações e revisão.",
     images: ["/og-papirar.svg"],
   },
   robots: {
@@ -60,6 +63,8 @@ export const metadata: Metadata = {
     },
   },
   manifest: "/manifest.webmanifest",
+  category: "education",
+  formatDetection: { telephone: false },
 }
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" })

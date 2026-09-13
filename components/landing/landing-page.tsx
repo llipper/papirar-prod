@@ -112,7 +112,7 @@ export function LandingPage() {
             Estude leis com <span className="italic text-neutral-500">mais clareza.</span>
           </h1>
           <p className="mx-auto mt-7 max-w-xl text-base leading-7 text-neutral-500 sm:text-lg">
-            Uma biblioteca jurídica simples, organizada e feita para transformar leitura em constância.
+            Uma biblioteca de legislação brasileira simples e organizada, feita para transformar a leitura de leis em constância.
           </p>
         </LandingReveal>
 
@@ -168,7 +168,7 @@ export function LandingPage() {
         <LandingReveal>
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-neutral-500">Feito para o dia a dia</p>
           <h2 className="mt-5 max-w-xl font-display text-4xl leading-tight tracking-[-0.03em] sm:text-6xl">Leia. Marque. Revise.</h2>
-          <p className="mt-6 max-w-md leading-7 text-neutral-500">Sua preparação não precisa caber em uma tela confusa. Navegue por livros, títulos, capítulos e artigos com a hierarquia que a lei já possui.</p>
+                <p className="mt-6 max-w-md leading-7 text-neutral-500">Sua preparação para concursos não precisa caber em uma tela confusa. Navegue por Constituição Federal, códigos e leis com a hierarquia que o texto legal já possui.</p>
         </LandingReveal>
         <LandingReveal delay={120}>
           <div className="rounded-[2rem] bg-neutral-100 p-3 shadow-[0_30px_80px_-45px_rgba(0,0,0,0.5)]">
