@@ -2,7 +2,7 @@
 
 import Image from "next/image"
 import Link from "next/link"
-import { ArrowRight, BookOpen, Highlighter, Headphones, Menu } from "lucide-react"
+import { ArrowRight, BookOpen, Check, Highlighter, Headphones, Menu } from "lucide-react"
 
 import { LandingReveal } from "@/components/landing/landing-reveal"
 import { ThemeLogo } from "@/components/brand/theme-logo"
@@ -52,6 +52,7 @@ export function LandingPage() {
         <div className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-8 text-sm text-neutral-500 md:flex">
           <a href="#recursos" className="transition-colors hover:text-neutral-950">Recursos</a>
           <a href="#como-funciona" className="transition-colors hover:text-neutral-950">Como funciona</a>
+          <a href="#premium" className="transition-colors hover:text-neutral-950">Premium</a>
           <a href="#para-voce" className="transition-colors hover:text-neutral-950">Para estudantes</a>
         </div>
 
@@ -80,6 +81,9 @@ export function LandingPage() {
                 </SheetClose>
                 <SheetClose asChild>
                   <a href="#como-funciona" className="rounded-lg px-2.5 py-2 text-xs font-medium hover:bg-muted">Como funciona</a>
+                </SheetClose>
+                <SheetClose asChild>
+                  <a href="#premium" className="rounded-lg px-2.5 py-2 text-xs font-medium hover:bg-muted">Premium</a>
                 </SheetClose>
                 <SheetClose asChild>
                   <a href="#para-voce" className="rounded-lg px-2.5 py-2 text-xs font-medium hover:bg-muted">Para estudantes</a>
@@ -171,6 +175,53 @@ export function LandingPage() {
             <Image src="/mock/mao_segurando-tela_leitura-1.png" alt="Leitura de uma lei no Papirar" width={900} height={900} className="h-auto w-full rounded-[1.5rem]" />
           </div>
         </LandingReveal>
+      </section>
+
+      <section id="premium" className="bg-neutral-50 px-6 py-24 lg:px-10 lg:py-32">
+        <div className="mx-auto grid max-w-7xl gap-12 lg:grid-cols-[1fr_0.82fr] lg:items-center">
+          <LandingReveal>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-neutral-500">Papirar Premium</p>
+            <h2 className="mt-5 max-w-xl font-display text-4xl leading-tight tracking-[-0.03em] sm:text-6xl">
+              Mais profundidade para a sua preparação.
+            </h2>
+            <p className="mt-6 max-w-lg leading-7 text-neutral-500">
+              Estude no seu ritmo com recursos criados para transformar leitura jurídica em entendimento, revisão e constância.
+            </p>
+          </LandingReveal>
+
+          <LandingReveal delay={120}>
+            <div className="rounded-[2rem] border border-neutral-200 bg-white p-7 shadow-[0_30px_80px_-45px_rgba(0,0,0,0.45)] sm:p-9">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-sm font-semibold">Premium mensal</p>
+                  <p className="mt-1 text-sm text-neutral-500">Para estudar com mais recursos.</p>
+                </div>
+                <span className="rounded-full bg-neutral-950 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-white">Premium</span>
+              </div>
+              <div className="mt-8 flex items-end gap-2">
+                <span className="font-display text-5xl tracking-[-0.04em]">R$ 24,99</span>
+                <span className="pb-1.5 text-sm text-neutral-500">por mês</span>
+              </div>
+              <p className="mt-2 text-xs text-neutral-500">Renovação mensal. Cancele quando quiser.</p>
+              <ul className="mt-8 space-y-3 text-sm text-neutral-700">
+                {[
+                  "Explicações em áudio com IA",
+                  "Leitura de leis disponível offline",
+                  "Comparação de atualizações legais",
+                ].map((benefit) => (
+                  <li key={benefit} className="flex items-center gap-3">
+                    <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-neutral-100"><Check className="size-3.5" /></span>
+                    {benefit}
+                  </li>
+                ))}
+              </ul>
+              <Button asChild className="mt-9 h-12 w-full rounded-full">
+                <Link href="/login">Criar conta e conhecer o Premium <ArrowRight className="size-4" /></Link>
+              </Button>
+              <p className="mt-3 text-center text-xs text-neutral-500">Assinatura disponível pelo aplicativo Android.</p>
+            </div>
+          </LandingReveal>
+        </div>
       </section>
 
       <section id="para-voce" className="px-6 pb-24 lg:px-10 lg:pb-32">
