@@ -53,6 +53,7 @@ export function LegalPage({ eyebrow, title, description, sections }: LegalPagePr
           <nav className="flex gap-4">
             <Link href="/privacidade" className="hover:text-foreground">Privacidade</Link>
             <Link href="/termos" className="hover:text-foreground">Termos</Link>
+            <Link href="/excluir-conta" className="hover:text-foreground">Excluir conta</Link>
             <Link href="/" className="hover:text-foreground">Início</Link>
           </nav>
         </div>
