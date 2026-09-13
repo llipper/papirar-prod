@@ -10,7 +10,7 @@ export default function PrivacyPage() {
         {
           title: "1. Quem somos",
           paragraphs: [
-            "O Papirar é uma plataforma de estudo e leitura jurídica. A identificação completa da entidade responsável, seu CNPJ e o canal oficial do encarregado devem ser informados nesta página antes do lançamento público.",
+            "O Papirar é uma plataforma de estudo e leitura jurídica operada por Papirar. Para dúvidas sobre privacidade, entre em contato pelo endereço suporte@papirar.com.",
           ],
         },
         {
@@ -44,7 +44,7 @@ export default function PrivacyPage() {
           title: "6. Seus direitos",
           paragraphs: [
             "Nos termos da LGPD, você pode solicitar confirmação de tratamento, acesso, correção, atualização, portabilidade quando aplicável, eliminação, informação sobre compartilhamentos e revisão de decisões automatizadas, além de revogar consentimentos quando essa for a base legal.",
-            "O canal oficial para exercer esses direitos deve ser informado nesta página antes da publicação definitiva.",
+            "Para exercer esses direitos, escreva para suporte@papirar.com usando o e-mail associado à sua conta. Podemos solicitar confirmação de identidade para proteger seus dados.",
           ],
         },
         {

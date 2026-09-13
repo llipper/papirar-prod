@@ -47,7 +47,7 @@ export default function TermsPage() {
         {
           title: "7. Contato e legislação",
           paragraphs: [
-            "A entidade responsável, o canal oficial de contato e a jurisdição aplicável devem ser preenchidos nesta seção antes do lançamento público. A Política de Privacidade integra estes Termos de Uso.",
+            "Para suporte, dúvidas ou solicitações relacionadas a estes Termos, entre em contato pelo endereço suporte@papirar.com. A Política de Privacidade integra estes Termos de Uso. Aplica-se a legislação brasileira.",
           ],
         },
       ]}

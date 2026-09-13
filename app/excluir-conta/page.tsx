@@ -18,7 +18,7 @@ export default function DeleteAccountPage() {
         {
           title: "1. Como solicitar",
           paragraphs: [
-            "Envie um e-mail para noreply@papirar.com usando o mesmo endereço de e-mail cadastrado no Papirar, com o assunto “Excluir minha conta”. Para proteger sua conta, poderemos pedir uma confirmação de identidade antes de concluir a solicitação.",
+            "Envie um e-mail para suporte@papirar.com usando o mesmo endereço de e-mail cadastrado no Papirar, com o assunto “Excluir minha conta”. Para proteger sua conta, poderemos pedir uma confirmação de identidade antes de concluir a solicitação.",
           ],
         },
         {

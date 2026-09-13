@@ -39,12 +39,14 @@ export const metadata: Metadata = {
     title: "Papirar | Estude leis com clareza",
     description:
       "Leitura organizada de legislação brasileira, explicações em áudio e ferramentas de estudo.",
+    images: [{ url: "/og-papirar.svg", width: 1200, height: 630, alt: "Papirar — Estude leis com clareza" }],
   },
   twitter: {
-    card: "summary",
+    card: "summary_large_image",
     title: "Papirar | Estude leis com clareza",
     description:
       "Leitura organizada de legislação brasileira, explicações em áudio e ferramentas de estudo.",
+    images: ["/og-papirar.svg"],
   },
   robots: {
     index: true,

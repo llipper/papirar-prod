@@ -242,7 +242,7 @@ export function LandingPage() {
           <nav aria-label="Links institucionais" className="flex flex-wrap gap-x-6 gap-y-3 sm:justify-end">
             <Link href="/privacidade" className="transition-colors hover:text-neutral-950">Política de Privacidade</Link>
             <Link href="/termos" className="transition-colors hover:text-neutral-950">Termos de Uso</Link>
-            <a href="mailto:noreply@papirar.com" className="transition-colors hover:text-neutral-950">Contato</a>
+            <a href="mailto:suporte@papirar.com" className="transition-colors hover:text-neutral-950">Contato</a>
           </nav>
         </div>
       </footer>
