@@ -17,9 +17,24 @@ import {
 import { sidebarNavigation } from "@/lib/dashboard/sidebar-navigation"
 import { ThemeLogo } from "@/components/brand/theme-logo"
 import { removeBrowserSession } from "@/lib/auth/browser-session"
+import { firebaseAuth } from "@/lib/firebase/client"
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const router = useRouter()
+  const [isAdmin, setIsAdmin] = React.useState(false)
+
+  React.useEffect(() => {
+    return firebaseAuth.onIdTokenChanged((user) => {
+      void user?.getIdTokenResult().then((token) => {
+        setIsAdmin(token.claims.admin === true)
+      }).catch(() => setIsAdmin(false))
+      if (!user) setIsAdmin(false)
+    })
+  }, [])
+
+  const footerNavigation = sidebarNavigation.footer.filter(
+    (item) => !("requiresAdmin" in item && item.requiresAdmin) || isAdmin
+  )
 
   function handleLogout(event: React.MouseEvent<HTMLAnchorElement>) {
     event.preventDefault()
@@ -63,7 +78,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarFooter>
         <SidebarSeparator />
         <SidebarMenu>
-          {sidebarNavigation.footer.map((item) => {
+          {footerNavigation.map((item) => {
             const Icon = item.icon
             return (
               <SidebarMenuItem key={item.href}>

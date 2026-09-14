@@ -31,7 +31,7 @@ export default function DeleteAccountPage() {
         {
           title: "3. Assinaturas e registros necessários",
           paragraphs: [
-            "Excluir a conta não cancela automaticamente uma assinatura contratada pela Google Play. Caso possua uma assinatura, cancele-a também em Google Play > Pagamentos e assinaturas para evitar novas cobranças.",
+            "Excluir a conta não cancela automaticamente uma assinatura. Antes de solicitar a exclusão, abra Assinatura no painel do Papirar e cancele a renovação. Assinaturas feitas pela Google Play também devem ser canceladas em Google Play > Pagamentos e assinaturas para evitar novas cobranças.",
             "Alguns registros podem ser preservados pelo período estritamente necessário para cumprir obrigações legais, fiscais, prevenir fraude, resolver disputas ou aplicar nossos termos. Esses registros não ficam disponíveis no aplicativo após a exclusão.",
           ],
         },

@@ -1,5 +1,6 @@
 import {
   BookOpenIcon,
+  CreditCardIcon,
   FilePenLineIcon,
   HighlighterIcon,
   HouseIcon,
@@ -16,9 +17,15 @@ export const sidebarNavigation = {
     { title: "Anotações", href: "/dashboard/anotacoes", icon: FilePenLineIcon },
     { title: "Marcações", href: "/dashboard/marcacoes", icon: HighlighterIcon },
     { title: "Perfil", href: "/dashboard/perfil", icon: UserCircleIcon },
+    { title: "Assinatura", href: "/dashboard/assinatura", icon: CreditCardIcon },
   ],
   footer: [
-    { title: "Administração", href: "/dashboard/administracao", icon: ShieldCheckIcon },
+    {
+      title: "Administração",
+      href: "/dashboard/administracao",
+      icon: ShieldCheckIcon,
+      requiresAdmin: true,
+    },
     {
       title: "Configuração",
       href: "/dashboard/configuracao",
