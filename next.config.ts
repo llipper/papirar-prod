@@ -29,7 +29,10 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
-        source: "/(.*)",
+        // Firebase Auth serves its own OAuth helper under /__/. Applying the
+        // application's CSP/X-Frame-Options to that proxied helper changes
+        // the callback response and can leave the Google popup blank.
+        source: "/((?!__/).*)",
         headers: [
           {
             key: "Content-Security-Policy",
