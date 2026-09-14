@@ -92,7 +92,8 @@ async function loadLawReadingFromRemote(book: BibliotecaBook): Promise<LawReadin
   const catalogVersion = book.version
   const catalogScope = book.scope
   if (!catalogLawId || !catalogVersion || !catalogScope) throw new Error("Metadados da lei incompletos.")
-  const response = await fetch(`${process.env.NEXT_PUBLIC_CLOUDFLARE_API_URL ?? "https://papirar-api.papirar-api-worker.workers.dev"}/catalog/reading?lawId=${encodeURIComponent(catalogLawId)}&version=${encodeURIComponent(catalogVersion)}&scope=${encodeURIComponent(catalogScope)}`)
+  const token = getAuth().currentUser ? await getAuth().currentUser!.getIdToken() : null
+  const response = await fetch(`${process.env.NEXT_PUBLIC_CLOUDFLARE_API_URL ?? "https://papirar-api.papirar-api-worker.workers.dev"}/catalog/reading?lawId=${encodeURIComponent(catalogLawId)}&version=${encodeURIComponent(catalogVersion)}&scope=${encodeURIComponent(catalogScope)}`, { headers: token ? { Authorization: `Bearer ${token}` } : undefined })
   if (!response.ok) throw new Error("Não foi possível carregar o conteúdo da lei.")
   const catalog = await response.json() as { law: { id: string; title: string; acronym: string }; version: { id: string }; nodes: Array<{ node_key: string; node_type: string; number?: string; label?: string }>; contents: Array<{ node_key: string; epigraphe?: string; text_content?: string; sort_order: number }>; audios: Array<{ node_key?: string; audio_key: string; title: string; public_url: string; duration_ms?: number | null }> }
   const catalogNodeByKey = new Map(catalog.nodes.map((node) => [node.node_key, node]))

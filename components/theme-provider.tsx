@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { ThemeProvider as NextThemesProvider, useTheme } from "next-themes"
+import { usePathname } from "next/navigation"
 
 function ThemeProvider({
   children,
@@ -36,6 +37,7 @@ function isTypingTarget(target: EventTarget | null) {
 
 function ThemeHotkey() {
   const { resolvedTheme, setTheme } = useTheme()
+  const pathname = usePathname()
 
   React.useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -44,6 +46,12 @@ function ThemeHotkey() {
       }
 
       if (event.metaKey || event.ctrlKey || event.altKey) {
+        return
+      }
+
+      // A landing tem identidade visual própria; o atalho de tema é exclusivo
+      // das áreas autenticadas do produto.
+      if (pathname === "/") {
         return
       }
 
@@ -63,7 +71,7 @@ function ThemeHotkey() {
     return () => {
       window.removeEventListener("keydown", onKeyDown)
     }
-  }, [resolvedTheme, setTheme])
+  }, [pathname, resolvedTheme, setTheme])
 
   return null
 }
