@@ -11,7 +11,11 @@ export type SubscriptionOverview = {
 
 async function authorizedRequest(path: string, init?: RequestInit) {
   const user = firebaseAuth.currentUser
-  if (!user) throw new Error("Sua sessão expirou. Entre novamente para continuar.")
+
+  if (!user) {
+    throw new Error("Sua sessão expirou. Entre novamente para continuar.")
+  }
+
   const response = await fetch(`/api/billing${path}`, {
     ...init,
     headers: {
@@ -19,15 +23,28 @@ async function authorizedRequest(path: string, init?: RequestInit) {
       Authorization: `Bearer ${await user.getIdToken()}`,
     },
   })
-  const payload = await response.json().catch(() => null) as { error?: string } | SubscriptionOverview | null
-  if (!response.ok) throw new Error(payload && "error" in payload ? payload.error ?? "Não foi possível concluir esta operação." : "Não foi possível concluir esta operação.")
+
+  const payload = await response
+    .json()
+    .catch(() => null) as { error?: string } | SubscriptionOverview | null
+
+  if (!response.ok) {
+    throw new Error(
+      payload && "error" in payload
+        ? payload.error ?? "Não foi possível concluir esta operação."
+        : "Não foi possível concluir esta operação."
+    )
+  }
+
   return payload
 }
 
 export async function getSubscriptionOverview() {
-  return await authorizedRequest("/billing/subscription") as SubscriptionOverview
+  return await authorizedRequest("/subscription") as SubscriptionOverview
 }
 
 export async function cancelMercadoPagoSubscription() {
-  return await authorizedRequest("/billing/mercado-pago/cancel", { method: "POST" }) as SubscriptionOverview
+  return await authorizedRequest("/mercado-pago/cancel", {
+    method: "POST",
+  }) as SubscriptionOverview
 }
