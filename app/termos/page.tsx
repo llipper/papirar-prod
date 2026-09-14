@@ -1,4 +1,12 @@
+import type { Metadata } from "next"
+
 import { LegalPage } from "@/components/legal/legal-page"
+
+export const metadata: Metadata = {
+  title: "Termos de Uso",
+  description: "Conheça os termos de uso do Papirar para leitura e estudo de legislação brasileira.",
+  alternates: { canonical: "/termos" },
+}
 
 export default function TermsPage() {
   return (

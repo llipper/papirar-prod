@@ -7,7 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip"
 import { CookieConsent } from "@/components/legal/cookie-consent"
 import { cn } from "@/lib/utils"
 
-const siteUrl = new URL("https://papirar.com")
+const siteUrl = new URL("https://www.papirar.com")
 
 export const metadata: Metadata = {
   metadataBase: siteUrl,
@@ -42,14 +42,14 @@ export const metadata: Metadata = {
     title: "Papirar | Estude leis com clareza",
     description:
       "Leis brasileiras organizadas para estudar: leitura, explicações em áudio, marcações e revisão.",
-    images: [{ url: "/og-papirar.svg", width: 1200, height: 630, alt: "Papirar — Estude leis com clareza" }],
+    images: [{ url: "/og-papirar.png", width: 1200, height: 630, alt: "Papirar — Estude leis com clareza" }],
   },
   twitter: {
     card: "summary_large_image",
     title: "Papirar | Estude leis com clareza",
     description:
       "Leis brasileiras organizadas para estudar: leitura, explicações em áudio, marcações e revisão.",
-    images: ["/og-papirar.svg"],
+    images: ["/og-papirar.png"],
   },
   robots: {
     index: true,

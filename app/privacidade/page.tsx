@@ -1,4 +1,12 @@
+import type { Metadata } from "next"
+
 import { LegalPage } from "@/components/legal/legal-page"
+
+export const metadata: Metadata = {
+  title: "Política de Privacidade",
+  description: "Entenda como o Papirar trata dados de cadastro, estudo, anotações e preferências.",
+  alternates: { canonical: "/privacidade" },
+}
 
 export default function PrivacyPage() {
   return (

@@ -7,7 +7,7 @@ export default function robots(): MetadataRoute.Robots {
       allow: "/",
       disallow: ["/dashboard/", "/login", "/cadastro", "/signup", "/recuperar-senha"],
     },
-    sitemap: "https://papirar.com/sitemap.xml",
-    host: "https://papirar.com",
+    sitemap: "https://www.papirar.com/sitemap.xml",
+    host: "https://www.papirar.com",
   }
 }
