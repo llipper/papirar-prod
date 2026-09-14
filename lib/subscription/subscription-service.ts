@@ -1,7 +1,5 @@
 import { firebaseAuth } from "@/lib/firebase/client"
 
-const apiBase = (process.env.NEXT_PUBLIC_CLOUDFLARE_API_URL ?? "https://papirar-api.papirar-api-worker.workers.dev").replace(/\/$/, "")
-
 export type SubscriptionOverview = {
   plan: "free" | "premium_monthly"
   isPremium: boolean
@@ -14,7 +12,7 @@ export type SubscriptionOverview = {
 async function authorizedRequest(path: string, init?: RequestInit) {
   const user = firebaseAuth.currentUser
   if (!user) throw new Error("Sua sessão expirou. Entre novamente para continuar.")
-  const response = await fetch(`${apiBase}${path}`, {
+  const response = await fetch(`/api/billing${path}`, {
     ...init,
     headers: {
       ...init?.headers,

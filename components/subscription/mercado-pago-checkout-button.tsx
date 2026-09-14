@@ -5,8 +5,6 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { firebaseAuth } from "@/lib/firebase/client"
 
-const apiBase = (process.env.NEXT_PUBLIC_CLOUDFLARE_API_URL ?? "https://papirar-api.papirar-api-worker.workers.dev").replace(/\/$/, "")
-
 export function MercadoPagoCheckoutButton({ label = "Assinar por R$ 24,99/mês", className }: { label?: string; className?: string }) {
   const [state, setState] = useState<"idle" | "loading" | "error">("idle")
   const [message, setMessage] = useState("")
@@ -18,7 +16,7 @@ export function MercadoPagoCheckoutButton({ label = "Assinar por R$ 24,99/mês",
       const user = firebaseAuth.currentUser
       if (!user) throw new Error("Sua sessão expirou. Entre novamente para assinar.")
       const token = await user.getIdToken()
-      const response = await fetch(`${apiBase}/billing/mercado-pago/checkout`, {
+      const response = await fetch("/api/billing/mercado-pago/checkout", {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
       })
