@@ -4,7 +4,7 @@ import { SubscriptionManagementCard } from "@/components/subscription/subscripti
 export default function SubscriptionPage() {
   return (
     <DashboardShell title="Assinatura" description="Gerencie seu Papirar Premium">
-      <div className="mx-auto w-full max-w-2xl">
+      <div className="w-full">
         <SubscriptionManagementCard />
       </div>
     </DashboardShell>
