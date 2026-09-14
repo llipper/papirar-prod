@@ -7,7 +7,7 @@ import { firebaseAuth } from "@/lib/firebase/client"
 
 const apiBase = (process.env.NEXT_PUBLIC_CLOUDFLARE_API_URL ?? "https://papirar-api.papirar-api-worker.workers.dev").replace(/\/$/, "")
 
-export function MercadoPagoCheckoutButton() {
+export function MercadoPagoCheckoutButton({ label = "Assinar por R$ 24,99/mês", className }: { label?: string; className?: string }) {
   const [state, setState] = useState<"idle" | "loading" | "error">("idle")
   const [message, setMessage] = useState("")
 
@@ -33,8 +33,8 @@ export function MercadoPagoCheckoutButton() {
 
   return (
     <div className="grid gap-3">
-      <Button className="h-12 w-full rounded-full" onClick={startCheckout} disabled={state === "loading"}>
-        {state === "loading" ? "Abrindo pagamento seguro..." : "Assinar por R$ 24,99/mês"}
+      <Button className={className ?? "h-12 w-full rounded-full"} onClick={startCheckout} disabled={state === "loading"}>
+        {state === "loading" ? "Abrindo pagamento seguro..." : label}
       </Button>
       {state === "error" ? <p className="text-center text-sm text-destructive" role="alert">{message}</p> : null}
     </div>
