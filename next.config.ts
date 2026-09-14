@@ -12,7 +12,7 @@ const contentSecurityPolicy = [
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",
-  "frame-src https://accounts.google.com https://*.firebaseapp.com",
+  "frame-src 'self' https://accounts.google.com https://*.firebaseapp.com https://auth.papirar.com",
   "frame-ancestors 'none'",
 ].join("; ")
 
@@ -27,16 +27,37 @@ const nextConfig: NextConfig = {
     remotePatterns: [],
   },
   async headers() {
-    return [{
-      source: "/(.*)",
-      headers: [
-        { key: "Content-Security-Policy", value: contentSecurityPolicy },
-        { key: "X-Content-Type-Options", value: "nosniff" },
-        { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-        { key: "Permissions-Policy", value: "camera=(self), microphone=(), geolocation=()" },
-        { key: "X-Frame-Options", value: "DENY" },
-      ],
-    }]
+    return [
+      {
+        source: "/(.*)",
+        headers: [
+          {
+            key: "Content-Security-Policy",
+            value: contentSecurityPolicy,
+          },
+          {
+            key: "Cross-Origin-Opener-Policy",
+            value: "same-origin-allow-popups",
+          },
+          {
+            key: "X-Content-Type-Options",
+            value: "nosniff",
+          },
+          {
+            key: "Referrer-Policy",
+            value: "strict-origin-when-cross-origin",
+          },
+          {
+            key: "Permissions-Policy",
+            value: "camera=(self), microphone=(), geolocation=()",
+          },
+          {
+            key: "X-Frame-Options",
+            value: "DENY",
+          },
+        ],
+      },
+    ]
   },
   async rewrites() {
     // Firebase's OAuth helper must be proxied, not redirected, so the
@@ -48,7 +69,8 @@ const nextConfig: NextConfig = {
       },
       {
         source: "/__/firebase/init.json",
-        destination: "https://papirar-72bc6.firebaseapp.com/__/firebase/init.json",
+        destination:
+          "https://papirar-72bc6.firebaseapp.com/__/firebase/init.json",
       },
     ]
   },
