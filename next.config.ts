@@ -38,6 +38,20 @@ const nextConfig: NextConfig = {
       ],
     }]
   },
+  async rewrites() {
+    // Firebase's OAuth helper must be proxied, not redirected, so the
+    // browser keeps auth.papirar.com in the address bar and cookie context.
+    return [
+      {
+        source: "/__/auth/:path*",
+        destination: "https://papirar-72bc6.firebaseapp.com/__/auth/:path*",
+      },
+      {
+        source: "/__/firebase/init.json",
+        destination: "https://papirar-72bc6.firebaseapp.com/__/firebase/init.json",
+      },
+    ]
+  },
 }
 
 export default nextConfig
