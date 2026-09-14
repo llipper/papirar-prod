@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server"
 
 const workerUrl = (
+  // Reuse the public endpoint already used by the browser client. The
+  // server-only variable may belong to an older API deployment, which would
+  // turn a valid checkout request into a misleading "Rota não encontrada".
+  process.env.NEXT_PUBLIC_CLOUDFLARE_API_URL ??
   process.env.CLOUDFLARE_API_URL ??
   "https://papirar-api.papirar-api-worker.workers.dev"
 ).replace(/\/$/, "")
