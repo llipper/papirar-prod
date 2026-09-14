@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import { Geist_Mono, Inter, Lora, Playfair_Display, Quicksand } from "next/font/google"
+import { Analytics } from "@vercel/analytics/next"
 
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
@@ -123,6 +124,7 @@ export default function RootLayout({
             <CookieConsent />
           </TooltipProvider>
         </ThemeProvider>
+        <Analytics />
       </body>
     </html>
   )
