@@ -1,13 +1,9 @@
 import { NextResponse } from "next/server"
 
-const workerUrl = (
-  // Reuse the public endpoint already used by the browser client. The
-  // server-only variable may belong to an older API deployment, which would
-  // turn a valid checkout request into a misleading "Rota não encontrada".
-  process.env.NEXT_PUBLIC_CLOUDFLARE_API_URL ??
-  process.env.CLOUDFLARE_API_URL ??
-  "https://papirar-api.papirar-api-worker.workers.dev"
-).replace(/\/$/, "")
+// This is a public Worker origin, not a secret. Keeping a single canonical
+// endpoint prevents a stale Vercel environment variable from sending billing
+// calls to a retired API deployment.
+const workerUrl = "https://papirar-api.papirar-api-worker.workers.dev"
 
 const allowedPaths = new Set([
   "subscription",
@@ -40,7 +36,8 @@ async function proxyBillingRequest(request: Request, context: RouteContext) {
 
   try {
     const requestUrl = new URL(request.url)
-    const upstream = await fetch(`${workerUrl}/billing/${endpoint}${requestUrl.search}`, {
+    const upstreamUrl = `${workerUrl}/billing/${endpoint}${requestUrl.search}`
+    const upstream = await fetch(upstreamUrl, {
       method: request.method,
       headers: {
         Authorization: authorization,
@@ -51,7 +48,11 @@ async function proxyBillingRequest(request: Request, context: RouteContext) {
       body: request.method === "GET" || request.method === "HEAD" ? undefined : await request.arrayBuffer(),
       cache: "no-store",
     })
-    const body = await upstream.arrayBuffer()
+    const body = await upstream.text()
+    console.info("[billing-proxy] upstream response", {
+      endpoint,
+      status: upstream.status,
+    })
     return new Response(body, {
       status: upstream.status,
       headers: {
@@ -59,7 +60,11 @@ async function proxyBillingRequest(request: Request, context: RouteContext) {
         "Cache-Control": "no-store",
       },
     })
-  } catch {
+  } catch (error) {
+    console.error("[billing-proxy] upstream request failed", {
+      endpoint,
+      error: error instanceof Error ? error.message : "UnknownError",
+    })
     return NextResponse.json(
       { error: "Não foi possível comunicar com o serviço de pagamento." },
       { status: 502 },
