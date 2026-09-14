@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { useSearchParams } from "next/navigation"
 import { useState } from "react"
 import { Eye, EyeOff } from "lucide-react"
 
@@ -25,6 +26,7 @@ import {
 } from "@/lib/auth/validators"
 
 export function LoginForm() {
+  const searchParams = useSearchParams()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
@@ -32,6 +34,7 @@ export function LoginForm() {
   const [feedback, setFeedback] = useState<string>()
   const [isError, setIsError] = useState(false)
   const [submitState, setSubmitState] = useState<"idle" | "success" | "error">("idle")
+  const next = safeNext(searchParams.get("next"))
 
   async function handleGoogleSignIn() {
     setIsSubmitting(true)
@@ -39,7 +42,7 @@ export function LoginForm() {
     try {
       const { error } = await signInWithGoogle()
       if (error) throw error
-      window.location.assign("/dashboard")
+      window.location.assign(next)
     } catch (error) {
       setIsError(true)
       setFeedback(authErrorMessage(error, "Não foi possível entrar com Google."))
@@ -67,7 +70,7 @@ export function LoginForm() {
       setIsError(false)
       setSubmitState("success")
       setFeedback("Login realizado com sucesso. Redirecionando...")
-      window.setTimeout(() => window.location.assign("/dashboard"), 700)
+      window.setTimeout(() => window.location.assign(next), 700)
     } catch (error) {
       setIsError(true)
       setSubmitState("error")
@@ -166,4 +169,8 @@ export function LoginForm() {
       </FieldGroup>
     </form>
   )
+}
+
+function safeNext(value: string | null) {
+  return value?.startsWith("/") && !value.startsWith("//") ? value : "/dashboard"
 }

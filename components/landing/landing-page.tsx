@@ -216,9 +216,9 @@ export function LandingPage() {
                 ))}
               </ul>
               <Button asChild className="mt-9 h-12 w-full rounded-full">
-                <Link href="/login">Criar conta e conhecer o Premium <ArrowRight className="size-4" /></Link>
+                <Link href="/assinar">Assinar Papirar Premium <ArrowRight className="size-4" /></Link>
               </Button>
-              <p className="mt-3 text-center text-xs text-neutral-500">Assinatura disponível pelo aplicativo Android.</p>
+              <p className="mt-3 text-center text-xs text-neutral-500">Pagamento processado com segurança pelo Mercado Pago.</p>
             </div>
           </LandingReveal>
         </div>
