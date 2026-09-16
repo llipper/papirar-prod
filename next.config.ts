@@ -18,6 +18,11 @@ const contentSecurityPolicy = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+
+  // Renomeia /_next/ para /_s/ em produção — oculta fingerprint do Next.js
+  // de ferramentas como Wappalyzer, Shodan e scanners automatizados.
+  assetPrefix: !isDevelopment ? "/_s" : undefined,
+
   images: {
     localPatterns: [
       { pathname: "/capas/**" },
@@ -70,14 +75,18 @@ const nextConfig: NextConfig = {
             key: "X-Frame-Options",
             value: "DENY",
           },
+          // Anti-fingerprint: remove identificação de servidor e tecnologia
+          {
+            key: "X-DNS-Prefetch-Control",
+            value: "off",
+          },
         ],
       },
     ]
   },
   async rewrites() {
-    // Firebase's OAuth helper must be proxied, not redirected, so the
-    // browser keeps auth.papirar.com in the address bar and cookie context.
     return [
+      // Firebase OAuth proxy — mantém auth.papirar.com no contexto do cookie
       {
         source: "/__/auth/:path*",
         destination: "https://papirar-72bc6.firebaseapp.com/__/auth/:path*",
@@ -86,6 +95,12 @@ const nextConfig: NextConfig = {
         source: "/__/firebase/init.json",
         destination:
           "https://papirar-72bc6.firebaseapp.com/__/firebase/init.json",
+      },
+      // Rewrite dos assets renomeados /_s/_next/* → /_next/*
+      // Necessário para que o assetPrefix funcione corretamente em produção
+      {
+        source: "/_s/_next/:path*",
+        destination: "/_next/:path*",
       },
     ]
   },

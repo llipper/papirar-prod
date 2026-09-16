@@ -1,0 +1,89 @@
+﻿import { NextRequest, NextResponse } from "next/server"
+import { classifyRequest, extractRealIp } from "@/lib/security/threat-detector"
+
+// Rotas que o middleware nunca deve interceptar
+const BYPASS_PREFIXES = [
+  "/_next/",
+  "/_s/",
+  "/favicon",
+  "/apple-icon",
+  "/icon",
+  "/manifest",
+  "/robots",
+  "/sitemap",
+]
+
+function generateRequestId(): string {
+  return Math.random().toString(36).slice(2, 11)
+}
+
+export function middleware(req: NextRequest) {
+  const { pathname } = req.nextUrl
+
+  // Ignora assets internos do Next.js
+  if (BYPASS_PREFIXES.some((p) => pathname.startsWith(p))) {
+    return NextResponse.next()
+  }
+
+  const requestId = generateRequestId()
+  const userAgent = req.headers.get("user-agent")
+  const threat = classifyRequest(pathname, userAgent)
+
+  // ── Bloquear / capturar ameaças ──────────────────────────────────────────
+  if (threat.type !== "safe") {
+    const ip = extractRealIp(req.headers)
+    const country =
+      req.headers.get("cf-ipcountry") ??
+      req.headers.get("x-vercel-ip-country") ??
+      "??"
+
+    // Log estruturado — capturado automaticamente pela Vercel / Cloudflare
+    console.warn(
+      JSON.stringify({
+        level: "SECURITY",
+        event: threat.type,
+        reason: threat.reason,
+        ip,
+        country,
+        path: pathname,
+        method: req.method,
+        userAgent,
+        requestId,
+        timestamp: new Date().toISOString(),
+      })
+    )
+
+    // Para scanners e honeypots: retorna 404 genérico que não revela stack
+    if (threat.type === "honeypot" || threat.type === "scanner" || threat.type === "probe") {
+      return new NextResponse("Not Found", {
+        status: 404,
+        headers: {
+          "Content-Type": "text/plain",
+          // Headers genéricos — não revelam Next.js
+          "X-Request-Id": requestId,
+        },
+      })
+    }
+  }
+
+  // ── Resposta normal com headers de segurança ─────────────────────────────
+  const response = NextResponse.next()
+
+  // Remove / falsifica headers que revelam tecnologia
+  response.headers.delete("X-Powered-By")
+  response.headers.delete("Server")
+
+  // Headers de segurança adicionais
+  response.headers.set("X-Request-Id", requestId)
+  response.headers.set("X-Content-Type-Options", "nosniff")
+  response.headers.set("X-DNS-Prefetch-Control", "off")
+
+  return response
+}
+
+export const config = {
+  // Aplica o middleware a todas as rotas exceto arquivos estáticos
+  matcher: [
+    "/((?!_next/static|_next/image|_s/|favicon\\.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff2?|ttf|otf)).*)",
+  ],
+}
