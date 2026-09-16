@@ -305,16 +305,7 @@ export const bibliotecaBooks: BibliotecaBook[] = [
     "documento_completo",
     "treaty",
   ],
-  [
-    "38",
-    "Livro de Teste — Estrutura Editorial",
-    "TESTE",
-    "Leis",
-    "2026",
-    "livro_teste",
-    "2026-08-30",
-    "documento_completo",
-  ],
+
 ].map(
   ([
     id,
