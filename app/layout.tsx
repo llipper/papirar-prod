@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next"
+import { Analytics } from "@vercel/analytics/next"
 import { SpeedInsights } from "@vercel/speed-insights/next"
 import { Geist_Mono, Inter, Lora, Playfair_Display, Quicksand } from "next/font/google"
 
@@ -140,6 +141,7 @@ export default function RootLayout({
             <CookieConsent />
           </TooltipProvider>
         </ThemeProvider>
+        <Analytics />
         <SpeedInsights />
       </body>
     </html>
