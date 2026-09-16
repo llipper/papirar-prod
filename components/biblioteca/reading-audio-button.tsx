@@ -4,7 +4,7 @@ import { Pause, Play, Square } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import type { MouseEvent } from "react"
 
-import type { ReadingAudio } from "@/lib/biblioteca/reading-service"
+import { type ReadingAudio, normalizeAudioUrl } from "@/lib/biblioteca/reading-service"
 
 const WAVEFORM = [3, 5, 8, 5, 10, 6, 12, 8, 4, 9, 6, 11, 5, 8, 4, 7, 3, 6]
 let activeAudio: HTMLAudioElement | null = null
@@ -52,6 +52,8 @@ export function ReadingAudioButton({ audio }: { audio: ReadingAudio }) {
     }
   }, [])
 
+  const normalizedUrl = normalizeAudioUrl(audio.url)
+
   const toggle = async () => {
     const element = audioRef.current
     if (!element) return
@@ -64,10 +66,15 @@ export function ReadingAudioButton({ audio }: { audio: ReadingAudio }) {
       activeAudio = element
       window.dispatchEvent(new CustomEvent<HTMLAudioElement>(AUDIO_STOP_EVENT, { detail: element }))
       element.playbackRate = playbackRate
-      await element.play()
-      setPlaying(true)
-      setPlayerClosing(false)
-      setPlayerVisible(true)
+      try {
+        await element.play()
+        setPlaying(true)
+        setPlayerClosing(false)
+        setPlayerVisible(true)
+      } catch (error) {
+        console.warn("Erro ao iniciar reprodução de áudio:", error)
+        setPlaying(false)
+      }
     } else {
       element.pause()
       if (activeAudio === element) activeAudio = null
@@ -121,7 +128,7 @@ export function ReadingAudioButton({ audio }: { audio: ReadingAudio }) {
 
   return (
     <span className="relative mx-1 inline-flex align-middle">
-      <audio ref={audioRef} src={audio.url} preload="metadata" aria-label={audio.title} />
+      <audio ref={audioRef} src={normalizedUrl} preload="metadata" aria-label={audio.title} />
 
       {playerVisible && (
         <span className={`absolute bottom-full left-0 z-30 mb-1 flex h-7 origin-bottom-left items-center gap-1 rounded-lg border border-border/80 bg-background px-1.5 shadow-lg transition-all duration-200 ${playerClosing ? "animate-out fade-out zoom-out-95" : "animate-in fade-in zoom-in-95"}`}>
