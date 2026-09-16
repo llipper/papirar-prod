@@ -246,8 +246,20 @@ export async function loadLawReading(book: BibliotecaBook): Promise<LawReading> 
       ageMs: Date.now() - cached.savedAt,
     })
 
-    if (Date.now() - cached.savedAt < LAW_READING_REVALIDATION_MS) {
+    const isStale = Date.now() - cached.savedAt >= LAW_READING_REVALIDATION_MS
+
+    if (!isStale) {
+      // Cache ainda fresco: URLs assinadas dos áudios continuam válidas.
       return cached.reading
+    }
+
+    // Cache velho: as URLs de áudio assinadas podem ter expirado (TTL = 15 min).
+    // Retorna a leitura sem áudios para evitar NotSupportedError no <audio>;
+    // a revalidação em segundo plano trará novas URLs assinadas e disparará
+    // LAW_READING_UPDATED_EVENT para restaurar os botões de áudio no UI.
+    const readingWithoutAudio: LawReading = {
+      ...cached.reading,
+      nodes: cached.reading.nodes.map((n) => ({ ...n, audio: undefined })),
     }
 
     void loadLawReadingFromRemote(book)
@@ -268,7 +280,7 @@ export async function loadLawReading(book: BibliotecaBook): Promise<LawReading> 
         })
       })
 
-    return cached.reading
+    return readingWithoutAudio
   }
 
   const freshReading = await loadLawReadingFromRemote(book)
