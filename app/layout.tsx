@@ -80,6 +80,7 @@ export const metadata: Metadata = {
   manifest: "/manifest.webmanifest",
   icons: {
     icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
       { url: "/favicon.ico", sizes: "any" },
       { url: "/favicon-48.png", type: "image/png", sizes: "48x48" },
       { url: "/icon.png", type: "image/png", sizes: "512x512" },
