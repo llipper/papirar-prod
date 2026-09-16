@@ -23,8 +23,20 @@ const nextConfig: NextConfig = {
       { pathname: "/capas/**" },
       { pathname: "/mock/**", search: "" },
       { pathname: "/logo.svg", search: "" },
+      { pathname: "/bg/**" },
+      { pathname: "/bg-white.png", search: "" },
+      { pathname: "/bg.png", search: "" },
     ],
-    remotePatterns: [],
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "lh3.googleusercontent.com",
+      },
+      {
+        protocol: "https",
+        hostname: "*.googleusercontent.com",
+      },
+    ],
   },
   async headers() {
     return [

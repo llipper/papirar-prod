@@ -62,11 +62,77 @@ export function SubscriptionManagementCard({ compact = false }: { compact?: bool
 
   return (
     <div className="grid w-full gap-4">
-      <Card className="relative overflow-hidden border-0 bg-[radial-gradient(circle_at_82%_18%,rgba(199,154,55,.25),transparent_28%),linear-gradient(115deg,#fffdf9_0%,#f7f0e3_100%)] shadow-none dark:bg-card">
         <CardContent className="relative min-h-80 p-7 sm:p-9">
-          <div className="relative z-10 max-w-2xl"><div className="flex flex-wrap items-center gap-3"><p className="text-xs font-bold tracking-[.24em] text-muted-foreground">ESTUDE COM MAIS POSSIBILIDADES</p><Badge variant={isPremium ? "default" : "secondary"} className="rounded-full">{isPremium ? "Premium ativo" : "Plano grátis"}</Badge></div><h1 className="mt-4 font-heading text-3xl font-black tracking-tight sm:text-5xl">{isPremium ? "Seu Papirar Premium está ativo" : "Desbloqueie o Papirar Premium"}</h1><p className="mt-4 max-w-xl text-base leading-7 text-muted-foreground sm:text-lg">{isPremium ? "Você tem acesso aos recursos completos para estudar leis com mais clareza e consistência." : "Acesse áudios das leis, recursos completos e uma experiência avançada de estudo, feita para quem leva a preparação a sério."}</p>{!isPremium ? <div className="mt-7 flex flex-wrap items-center gap-x-5 gap-y-2"><p className="font-heading text-3xl font-black">R$ 24,99<span className="text-xl">/mês</span></p><p className="border-l pl-5 text-sm text-muted-foreground">Cancele quando quiser.<br />Sem fidelidade.</p></div> : <p className="mt-7 flex items-center gap-2 text-sm font-medium"><CalendarClock className="size-4" />{cancelled ? (renewalDate ? `Acesso ativo até ${renewalDate}.` : "Renovação cancelada.") : (renewalDate ? `Próxima renovação em ${renewalDate}.` : "Renovação automática mensal.")}</p>}<div className="mt-7 flex flex-wrap gap-3">{!isPremium || cancelled ? <MercadoPagoCheckoutButton label={cancelled ? "Assinar novamente" : "Assinar Premium"} className="h-12 rounded-full bg-[#b68829] px-6 text-base text-white hover:bg-[#95701f]" /> : <ManageActions provider={subscription?.provider} cancelled={cancelled} cancelling={cancelling} onCancel={cancelRenewal} renewalDate={renewalDate} />}</div></div>
+          <div className="relative z-10 max-w-2xl">
+            <div className="flex flex-wrap items-center gap-3">
+              <p className="text-xs font-bold tracking-[.24em] text-muted-foreground">ESTUDE COM MAIS POSSIBILIDADES</p>
+              <Badge variant={isPremium ? "default" : "secondary"} className="rounded-full">
+                {isPremium ? (subscription?.provider ? "Premium ativo" : "Teste grátis ativo (3 dias)") : "Plano grátis"}
+              </Badge>
+            </div>
+            <h1 className="mt-4 font-heading text-3xl font-black tracking-tight sm:text-5xl">
+              {isPremium
+                ? subscription?.provider
+                  ? "Seu Papirar Premium está ativo"
+                  : "Seu teste grátis de 3 dias está ativo"
+                : "Desbloqueie o Papirar Premium"}
+            </h1>
+            <p className="mt-4 max-w-xl text-base leading-7 text-muted-foreground sm:text-lg">
+              {isPremium
+                ? subscription?.provider
+                  ? "Você tem acesso aos recursos completos para estudar leis com mais clareza e consistência."
+                  : "Todos os áudios das leis e recursos completos estão liberados para o seu período de teste."
+                : "Acesse áudios das leis, recursos completos e uma experiência avançada de estudo, feita para quem leva a preparação a sério."}
+            </p>
+            {!isPremium ? (
+              <div className="mt-7 flex flex-wrap items-center gap-x-5 gap-y-2">
+                <p className="font-heading text-3xl font-black">
+                  R$ 24,99<span className="text-xl">/mês</span>
+                </p>
+                <p className="border-l pl-5 text-sm text-muted-foreground">
+                  3 dias de teste grátis.<br />Cancele quando quiser.
+                </p>
+              </div>
+            ) : (
+              <p className="mt-7 flex items-center gap-2 text-sm font-medium">
+                <CalendarClock className="size-4 text-[#b68829]" />
+                {subscription?.provider
+                  ? cancelled
+                    ? renewalDate
+                      ? `Acesso ativo até ${renewalDate}.`
+                      : "Renovação cancelada."
+                    : renewalDate
+                      ? `Próxima renovação em ${renewalDate}.`
+                      : "Renovação automática mensal."
+                  : renewalDate
+                    ? `Período de teste liberado até ${renewalDate}.`
+                    : "Período de teste de 3 dias ativo."}
+              </p>
+            )}
+            <div className="mt-7 flex flex-wrap gap-3">
+              {!isPremium || !subscription?.provider || cancelled ? (
+                <MercadoPagoCheckoutButton
+                  label={
+                    !subscription?.provider && isPremium
+                      ? "Assinar Premium definitivo"
+                      : cancelled
+                        ? "Assinar novamente"
+                        : "Iniciar 3 dias de teste grátis"
+                  }
+                  className="h-12 rounded-full bg-[#b68829] px-6 text-base text-white hover:bg-[#95701f]"
+                />
+              ) : (
+                <ManageActions
+                  provider={subscription?.provider}
+                  cancelled={cancelled}
+                  cancelling={cancelling}
+                  onCancel={cancelRenewal}
+                  renewalDate={renewalDate}
+                />
+              )}
+            </div>
+          </div>
         </CardContent>
-      </Card>
 
       <Card className="border-0 shadow-none"><CardContent className="grid gap-5 p-5 sm:grid-cols-2 lg:grid-cols-4">{benefits.map(({ icon: Icon, title, description }) => <div key={title} className="flex gap-3"><div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#f7f0e3] text-[#87631c] dark:bg-muted dark:text-foreground"><Icon className="size-5" /></div><div><h2 className="text-sm font-bold">{title}</h2><p className="mt-1 text-xs leading-5 text-muted-foreground">{description}</p></div></div>)}</CardContent></Card>
 

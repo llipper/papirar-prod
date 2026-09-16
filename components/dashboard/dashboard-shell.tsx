@@ -2,6 +2,7 @@ import * as React from "react"
 
 import { AppSidebar } from "@/components/app-sidebar"
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
+import { DashboardHeader } from "@/components/dashboard-header"
 
 type DashboardShellProps = {
   title: string
@@ -30,7 +31,10 @@ export function DashboardShell({
               ) : null}
             </div>
           </div>
-          {action}
+          <div className="flex items-center gap-2">
+            {action}
+            <DashboardHeader />
+          </div>
         </header>
         <main className="flex min-h-0 flex-1 flex-col gap-6 p-4 md:p-6">
           {children}

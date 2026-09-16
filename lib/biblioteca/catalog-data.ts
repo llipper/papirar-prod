@@ -86,8 +86,6 @@ export const bibliotecaBooks: BibliotecaBook[] = [
     "2026-08-21",
     "preambulo",
   ],
-  ["2", "Código Civil", "CC", "Códigos", "2024"],
-  ["3", "Código de Processo Civil", "CPC", "Códigos", "2024"],
   [
     "4",
     "Código Penal",
@@ -128,7 +126,6 @@ export const bibliotecaBooks: BibliotecaBook[] = [
     "2026-08-22",
     "codigo_processo_penal_militar",
   ],
-  ["8", "Código de Trânsito Brasileiro", "CTB", "Códigos", "2024"],
   [
     "9",
     "Estatuto da Criança e do Adolescente",

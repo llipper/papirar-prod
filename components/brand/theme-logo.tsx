@@ -5,7 +5,7 @@ import { useTheme } from "next-themes"
 
 export function ThemeLogo({ size = 24, className = "" }: { size?: number; className?: string }) {
   const { resolvedTheme } = useTheme()
-  const source = resolvedTheme === "dark" ? "/logo_p_white.svg" : "/logo_p_black.svg"
+  const source = resolvedTheme === "dark" ? "/logo__white.svg" : "/logo__dark.svg"
 
   return (
     <Image

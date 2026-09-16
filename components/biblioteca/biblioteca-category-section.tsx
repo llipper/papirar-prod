@@ -41,11 +41,9 @@ export function BibliotecaCategorySection({
   }
 
   const handlePointerDown = (event: PointerEvent<HTMLDivElement>) => {
-    if (event.pointerType === "mouse" && event.button !== 0) return
+    // Only capture for mouse drags (let touch/trackpad gestures scroll naturally)
+    if (event.pointerType !== "mouse" || event.button !== 0) return
 
-    // The book link must remain a normal interactive element. Starting the
-    // carousel drag from it makes the cover feel like it is being lifted and
-    // can swallow the user's scroll/click gesture.
     if (event.target instanceof HTMLElement && event.target.closest("a")) return
 
     const scroller = scrollerRef.current
@@ -60,57 +58,60 @@ export function BibliotecaCategorySection({
   }
 
   const handlePointerMove = (event: PointerEvent<HTMLDivElement>) => {
+    if (event.pointerType !== "mouse" || !dragRef.current.active) return
     const scroller = scrollerRef.current
-    if (!scroller || !dragRef.current.active) return
+    if (!scroller) return
 
     const distance = event.clientX - dragRef.current.startX
     if (!dragRef.current.moved && Math.abs(distance) < 6) return
 
     if (!dragRef.current.moved) {
       dragRef.current.moved = true
-      scroller.setPointerCapture(event.pointerId)
+      try {
+        scroller.setPointerCapture(event.pointerId)
+      } catch {}
     }
 
-    scroller.scrollLeft =
-      dragRef.current.startScrollLeft - distance
+    scroller.scrollLeft = dragRef.current.startScrollLeft - distance
   }
 
   const stopDragging = (event: PointerEvent<HTMLDivElement>) => {
-    if (dragRef.current.moved) event.preventDefault()
     dragRef.current.active = false
     dragRef.current.moved = false
     if (scrollerRef.current?.hasPointerCapture(event.pointerId)) {
-      scrollerRef.current.releasePointerCapture(event.pointerId)
+      try {
+        scrollerRef.current.releasePointerCapture(event.pointerId)
+      } catch {}
     }
   }
 
   return (
     <section className="space-y-2" aria-labelledby={`biblioteca-${category}`}>
       <div className="flex items-center justify-between gap-4 px-1">
-        <h2 id={`biblioteca-${category}`} className="font-serif text-[10px] font-bold text-foreground sm:text-xs">
+        <h2 id={`biblioteca-${category}`} className="font-heading text-xs font-bold text-foreground sm:text-sm">
           {category}
         </h2>
         <div className="flex items-center gap-2">
-          <span className="text-[9px] font-medium text-muted-foreground">
+          <span className="text-[10px] font-medium text-muted-foreground">
             {books.length} {books.length === 1 ? "lei" : "leis"}
           </span>
           <Button
             variant="ghost"
             size="icon-xs"
-            className="size-5 text-muted-foreground"
+            className="size-6 text-muted-foreground hover:text-foreground cursor-pointer"
             onClick={() => scroll("left")}
             aria-label={`Anterior em ${category}`}
           >
-            <ChevronLeft />
+            <ChevronLeft className="size-4" />
           </Button>
           <Button
             variant="ghost"
             size="icon-xs"
-            className="size-5 text-muted-foreground"
+            className="size-6 text-muted-foreground hover:text-foreground cursor-pointer"
             onClick={() => scroll("right")}
             aria-label={`Próximo em ${category}`}
           >
-            <ChevronRight />
+            <ChevronRight className="size-4" />
           </Button>
         </div>
       </div>
@@ -137,7 +138,7 @@ export function BibliotecaCategorySection({
           onPointerUp={stopDragging}
           onPointerCancel={stopDragging}
           onPointerLeave={stopDragging}
-          className="relative z-0 flex h-full min-w-0 max-w-full cursor-grab touch-pan-x select-none items-start gap-3 overflow-x-auto px-3 pt-2 active:cursor-grabbing [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:gap-4 sm:px-4"
+          className="relative z-0 flex h-full min-w-0 max-w-full cursor-grab select-none items-start gap-3 overflow-x-auto scroll-smooth px-3 pt-2 active:cursor-grabbing [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:gap-4 sm:px-4"
         >
           {books.map((book, index) => (
             <BibliotecaBookCard key={book.id} book={book} index={index} />

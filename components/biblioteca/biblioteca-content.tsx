@@ -11,6 +11,7 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar"
+import { DashboardHeader } from "@/components/dashboard-header"
 import {
   bibliotecaBooks,
   bibliotecaCategories,
@@ -43,56 +44,31 @@ export function BibliotecaContent() {
     <SidebarProvider>
       <AppSidebar />
       <SidebarInset className="min-w-0 overflow-hidden">
-        <header className="flex h-16 shrink-0 items-center justify-between gap-2 border-b px-4">
-          <SidebarTrigger className="-ml-1" />
-          {isSearchOpen ? (
-            <div className="flex w-full max-w-md items-center gap-2">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  autoFocus
-                  value={query}
-                  onChange={(event) => setQuery(event.target.value)}
-                  placeholder="Buscar"
-                  className="h-9 rounded-full pl-9 pr-9"
-                  aria-label="Buscar na Biblioteca"
-                />
-                {query && (
-                  <button
-                    type="button"
-                    onClick={() => setQuery("")}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-                    aria-label="Limpar busca"
-                  >
-                    <X className="size-4" />
-                  </button>
-                )}
-              </div>
-              <Button variant="ghost" size="icon" onClick={clearSearch} aria-label="Fechar busca">
-                <X />
-              </Button>
+        <header className="flex h-16 shrink-0 items-center justify-between gap-4 border-b px-4 md:px-6">
+          <div className="flex items-center gap-3">
+            <SidebarTrigger className="-ml-1" />
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold">Biblioteca</p>
+              <p className="truncate text-xs text-muted-foreground">Catálogo de legislação</p>
             </div>
-          ) : (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setIsSearchOpen(true)}
-              aria-label="Buscar na Biblioteca"
-            >
-              <Search />
-            </Button>
-          )}
+          </div>
+          <div className="flex items-center gap-2">
+            <DashboardHeader />
+          </div>
         </header>
 
-        <main className="flex flex-1 flex-col overflow-hidden">
-          <div className="mx-auto min-w-0 w-full max-w-7xl flex-1 overflow-y-auto overflow-x-hidden px-6 py-8 lg:px-10">
+        <main className="flex min-h-0 flex-1 flex-col overflow-y-auto px-6 py-8 lg:px-10">
+          <div className="mx-auto w-full max-w-7xl">
             <div className="mb-10 text-center sm:mb-12">
-              <p className="font-serif text-[8px] font-bold text-foreground">
-                My Favourite
+              <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+                Legislação & Códigos
               </p>
-              <h1 className="font-serif text-4xl font-black leading-none tracking-tight sm:text-5xl">
-                BOOKS
+              <h1 className="mt-1 font-heading text-3xl font-black tracking-tight text-foreground sm:text-4xl">
+                Biblioteca Jurídica
               </h1>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Explore leis organizadas, atualizadas e com áudio explicativo integrado.
+              </p>
             </div>
 
             <div className="space-y-10 pb-10">

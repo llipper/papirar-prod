@@ -1,15 +1,16 @@
 "use client"
 
+import Image from "next/image"
 import Link from "next/link"
 import { useState } from "react"
 
 import { AuthPageShell } from "@/components/auth/auth-page-shell"
-import { AuthFeedback } from "@/components/auth/auth-feedback"
 import { Button } from "@/components/ui/button"
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { authErrorMessage, requestPasswordReset } from "@/lib/auth/auth-service"
 import { normalizeEmail, validateEmail } from "@/lib/auth/validators"
+import { cn } from "@/lib/utils"
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("")
@@ -41,19 +42,77 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <AuthPageShell title="Recuperar senha" description="Informe seu e-mail para receber um link seguro de acesso.">
-      <form onSubmit={handleSubmit} noValidate>
-        <FieldGroup>
-          <AuthFeedback message={feedback} tone={isError ? "error" : "success"} />
-          <Field>
-            <FieldLabel htmlFor="email">E-mail</FieldLabel>
-            <Input id="email" type="email" inputMode="email" autoComplete="email" placeholder="voce@exemplo.com" value={email} onChange={(event) => setEmail(event.target.value)} disabled={isSubmitting} />
-            <FieldDescription>Nunca informamos se um endereço está cadastrado.</FieldDescription>
-          </Field>
-          <Field><Button type="submit" disabled={isSubmitting} className="w-full">{isSubmitting ? "Enviando..." : "Enviar instruções"}</Button></Field>
-          <FieldDescription className="text-center"><Link href="/login" className="font-medium text-foreground underline-offset-4 hover:underline">Voltar para entrar</Link></FieldDescription>
-        </FieldGroup>
-      </form>
+    <AuthPageShell>
+      <div className="flex w-full flex-col gap-7">
+        <form onSubmit={handleSubmit} noValidate aria-busy={isSubmitting}>
+          <FieldGroup className="gap-5">
+            {/* Header */}
+            <div className="mb-2 flex flex-col items-center text-center">
+              <Link href="/" className="mb-5 transition-transform hover:scale-105 active:scale-95">
+                <Image
+                  src="/logo.svg"
+                  alt="Papirar"
+                  width={44}
+                  height={44}
+                  priority
+                  className="h-11 w-11 object-contain dark:invert"
+                />
+              </Link>
+
+              <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+                Recuperar senha
+              </h1>
+
+              <p className="mt-2 max-w-sm text-sm leading-6 text-muted-foreground">
+                Informe seu e-mail para receber as instruções de recuperação.
+              </p>
+            </div>
+
+            <Field>
+              <FieldLabel htmlFor="email">E-mail</FieldLabel>
+              <Input
+                id="email"
+                type="email"
+                inputMode="email"
+                autoComplete="email"
+                placeholder="seu@email.com"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                disabled={isSubmitting}
+                className="h-10"
+              />
+            </Field>
+
+            <Field className="pt-1">
+              <Button
+                type="submit"
+                disabled={isSubmitting}
+                className="h-10 w-full font-medium transition-all duration-200"
+              >
+                {isSubmitting ? "Enviando..." : "Enviar instruções"}
+              </Button>
+            </Field>
+
+            {feedback && (
+              <p
+                role={isError ? "alert" : "status"}
+                className={cn("text-center text-sm", isError ? "text-destructive" : "text-muted-foreground")}
+              >
+                {feedback}
+              </p>
+            )}
+
+            <FieldDescription className="text-center">
+              <Link
+                href="/login"
+                className="font-medium text-foreground underline-offset-4 transition-colors hover:underline"
+              >
+                Voltar para o login
+              </Link>
+            </FieldDescription>
+          </FieldGroup>
+        </form>
+      </div>
     </AuthPageShell>
   )
 }

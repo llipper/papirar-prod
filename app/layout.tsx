@@ -1,4 +1,4 @@
-import type { Metadata } from "next"
+import type { Metadata, Viewport } from "next"
 import { Geist_Mono, Inter, Lora, Playfair_Display, Quicksand } from "next/font/google"
 
 import "./globals.css"
@@ -9,14 +9,21 @@ import { cn } from "@/lib/utils"
 
 const siteUrl = new URL("https://www.papirar.com")
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  themeColor: "#ffffff",
+}
+
 export const metadata: Metadata = {
   metadataBase: siteUrl,
   title: {
-    default: "Papirar | Estude leis com clareza",
+    default: "Papirar | Estude Leis e Legislação para Concursos e OAB",
     template: "%s | Papirar",
   },
   description:
-    "Papirar: estude leis brasileiras, Constituição Federal e legislação para concursos com leitura organizada, explicações em áudio, marcações e anotações.",
+    "Estude leis brasileiras, códigos e a Constituição com leitura organizada, áudio explicativo e marcações para concursos públicos e OAB.",
   applicationName: "Papirar",
   keywords: [
     "legislação brasileira",
@@ -25,30 +32,38 @@ export const metadata: Metadata = {
     "constituição federal",
     "concursos públicos",
     "lei seca",
+    "oab",
+    "exame de ordem",
     "estudo para concursos",
     "áudio de leis",
+    "código penal",
+    "código civil",
   ],
-  authors: [{ name: "Papirar" }],
+  authors: [{ name: "Papirar", url: "https://www.papirar.com" }],
   creator: "Papirar",
   publisher: "Papirar",
   alternates: {
     canonical: "/",
+    languages: {
+      "pt-BR": "/",
+      "x-default": "/",
+    },
   },
   openGraph: {
     type: "website",
     locale: "pt_BR",
     url: "/",
     siteName: "Papirar",
-    title: "Papirar | Estude leis com clareza",
+    title: "Papirar | Estude Leis e Legislação para Concursos e OAB",
     description:
-      "Leis brasileiras organizadas para estudar: leitura, explicações em áudio, marcações e revisão.",
+      "Estude leis brasileiras, códigos e a Constituição com leitura organizada, áudio explicativo e marcações para concursos públicos e OAB.",
     images: [{ url: "/og-papirar.png", width: 1200, height: 630, alt: "Papirar — Estude leis com clareza" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Papirar | Estude leis com clareza",
+    title: "Papirar | Estude Leis e Legislação para Concursos e OAB",
     description:
-      "Leis brasileiras organizadas para estudar: leitura, explicações em áudio, marcações e revisão.",
+      "Estude leis brasileiras, códigos e a Constituição com leitura organizada, áudio explicativo e marcações para concursos públicos e OAB.",
     images: ["/og-papirar.png"],
   },
   robots: {
