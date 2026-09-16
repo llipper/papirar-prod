@@ -61,7 +61,7 @@ const structuredData = {
           name: "Quais leis e códigos estão disponíveis no Papirar?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "O Papirar conta com as principais leis e códigos para concursos públicos e OAB, incluindo a Constituição Federal de 1988, Código Penal, Código de Processo Penal, Código Civil, Código de Processo Civil, CLT, Lei 8.112/90, Lei de Licitações (Lei 14.133/21), Lei de Improbidade Administrativa e muito mais, sempre atualizadas.",
+            text: "O Papirar conta com as principais leis e códigos para concursos públicos e OAB, incluindo a Constituição Federal de 1988, Código Penal, Código de Processo Penal, Código Penal Militar, ECA, Lei Maria da Penha, Lei de Drogas, Lei 8.112/90, Lei de Licitações (Lei 14.133/21), LGPD e muito mais, sempre atualizadas.",
           },
         },
         {

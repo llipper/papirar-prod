@@ -17,7 +17,7 @@ export const sidebarNavigation = {
     { title: "Anotações", href: "/dashboard/anotacoes", icon: FilePenLineIcon },
     { title: "Marcações", href: "/dashboard/marcacoes", icon: HighlighterIcon },
     { title: "Perfil", href: "/dashboard/perfil", icon: UserCircleIcon },
-    { title: "Assinatura", href: "/dashboard/assinatura", icon: CreditCardIcon },
+    // { title: "Assinatura", href: "/dashboard/assinatura", icon: CreditCardIcon },
   ],
   footer: [
     {

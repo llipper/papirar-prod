@@ -56,12 +56,12 @@ const legalCatalog = [
   { name: "Constituição Federal de 1988", category: "Direito Constitucional", badge: "Atualizada 2026" },
   { name: "Código Penal (CP)", category: "Direito Penal", badge: "Completo" },
   { name: "Código de Processo Penal (CPP)", category: "Processo Penal", badge: "Completo" },
-  { name: "Código Civil (CC)", category: "Direito Civil", badge: "Completo" },
-  { name: "Código de Processo Civil (CPC)", category: "Processo Civil", badge: "Completo" },
-  { name: "CLT — Consolidação das Leis do Trabalho", category: "Direito do Trabalho", badge: "Atualizada" },
-  { name: "Lei 8.112/1990 (Regime Jurídico dos Servidores)", category: "Direito Administrativo", badge: "Concursos" },
+  { name: "Estatuto da Criança e do Adolescente (ECA)", category: "Estatutos", badge: "Completo" },
+  { name: "Lei Maria da Penha (Lei 11.340/2006)", category: "Legislação Penal Especial", badge: "Completo" },
+  { name: "Lei de Drogas (Lei 11.343/2006)", category: "Legislação Penal Especial", badge: "Completo" },
+  { name: "Lei 8.112/1990 (Regime dos Servidores)", category: "Direito Administrativo", badge: "Concursos" },
   { name: "Lei 14.133/2021 (Nova Lei de Licitações)", category: "Direito Administrativo", badge: "Em Destaque" },
-  { name: "Lei 13.709/2018 (LGPD)", category: "Legislação Especial", badge: "Completo" },
+  { name: "Lei 13.709/2018 (LGPD)", category: "Proteção de Dados", badge: "Completo" },
 ]
 
 const faqs = [
@@ -360,14 +360,18 @@ export function LandingPage() {
                   </li>
                 ))}
               </ul>
-              <Button asChild className="mt-8 h-12 w-full rounded-full text-sm font-semibold">
-                <Link href="/assinar">
-                  Assinar Papirar Premium <ArrowRight className="ml-1 size-4" />
-                </Link>
-              </Button>
-              <p className="mt-3 text-center text-xs text-neutral-500 flex items-center justify-center gap-1.5">
-                <Shield className="size-3.5 text-emerald-600" /> Pagamento processado com segurança pelo Mercado Pago.
-              </p>
+             <Button
+  disabled
+  className="mt-8 h-12 w-full rounded-full text-sm font-semibold"
+>
+  Assinar Papirar Premium
+  <ArrowRight className="ml-1 size-4" />
+</Button>
+
+<p className="mt-3 flex items-center justify-center gap-1.5 text-center text-xs text-neutral-500">
+  <Shield className="size-3.5 text-emerald-600" />
+  Pagamento processado com segurança pelo Mercado Pago.
+</p>
             </div>
           </LandingReveal>
         </div>
