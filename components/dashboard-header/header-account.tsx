@@ -80,13 +80,13 @@ export function HeaderAccount() {
           <span>Perfil</span>
         </Link>
 
-        <Link
+        {/* <Link
           href="/dashboard/assinatura"
           className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-xs font-medium text-foreground hover:bg-muted cursor-pointer transition-colors"
         >
           <CreditCard className="size-3.5 text-muted-foreground" />
           <span>Minha Assinatura</span>
-        </Link>
+        </Link> */}
 
         <Link
           href="/dashboard/configuracao"
