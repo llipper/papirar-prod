@@ -29,8 +29,10 @@ export function BibliotecaBookCard({
   return (
     <Link
       href={`/dashboard/biblioteca/${book.id}`}
+      draggable={false}
+      onDragStart={(e) => e.preventDefault()}
       className={cn(
-        "group relative flex aspect-[2/3] h-auto w-[124px] shrink-0 flex-col overflow-hidden rounded-[2px] text-left shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:w-[142px]",
+        "group relative flex aspect-[2/3] h-auto w-[124px] shrink-0 select-none flex-col overflow-hidden rounded-t-[5px] rounded-b-[2px] text-left shadow-md transition-transform hover:-translate-y-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:w-[142px]",
         book.coverPath ? "bg-muted" : "p-3.5 sm:p-4",
         coverColors[index % coverColors.length]
       )}
@@ -42,23 +44,24 @@ export function BibliotecaBookCard({
             src={book.coverPath}
             alt={`Capa de ${book.title}`}
             fill
+            draggable={false}
             sizes="(min-width: 640px) 142px, 124px"
-            className="object-cover"
+            className="pointer-events-none select-none object-cover"
           />
-          <span className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-black/45 to-transparent" />
-          <span className="absolute right-2 bottom-2 text-[9px] font-bold text-white drop-shadow sm:text-[10px]">
+          <span className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-black/45 to-transparent" />
+          <span className="pointer-events-none absolute right-2 bottom-2 text-[9px] font-bold text-white drop-shadow sm:text-[10px]">
             {book.acronym}
           </span>
         </>
       ) : (
         <>
-          <span className="text-[7px] font-bold uppercase tracking-[0.08em] opacity-70 sm:text-[8px]">
+          <span className="pointer-events-none text-[7px] font-bold uppercase tracking-[0.08em] opacity-70 sm:text-[8px]">
             {book.category}
           </span>
-          <span className="mt-2 line-clamp-5 font-serif text-[15px] font-bold leading-[1.02] sm:text-[17px]">
+          <span className="pointer-events-none mt-2 line-clamp-5 font-serif text-[15px] font-bold leading-[1.02] sm:text-[17px]">
             {book.title}
           </span>
-          <span className="mt-auto flex items-center justify-between text-[10px] font-bold opacity-70 sm:text-[11px]">
+          <span className="pointer-events-none mt-auto flex items-center justify-between text-[10px] font-bold opacity-70 sm:text-[11px]">
             <BookOpenText className="size-3.5 sm:size-4" aria-hidden="true" />
             <span>{book.acronym}</span>
           </span>

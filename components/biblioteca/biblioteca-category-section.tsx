@@ -41,10 +41,8 @@ export function BibliotecaCategorySection({
   }
 
   const handlePointerDown = (event: PointerEvent<HTMLDivElement>) => {
-    // Only capture for mouse drags (let touch/trackpad gestures scroll naturally)
+    // Only capture for mouse primary button drags
     if (event.pointerType !== "mouse" || event.button !== 0) return
-
-    if (event.target instanceof HTMLElement && event.target.closest("a")) return
 
     const scroller = scrollerRef.current
     if (!scroller) return
@@ -63,7 +61,7 @@ export function BibliotecaCategorySection({
     if (!scroller) return
 
     const distance = event.clientX - dragRef.current.startX
-    if (!dragRef.current.moved && Math.abs(distance) < 6) return
+    if (!dragRef.current.moved && Math.abs(distance) < 5) return
 
     if (!dragRef.current.moved) {
       dragRef.current.moved = true
@@ -77,11 +75,23 @@ export function BibliotecaCategorySection({
 
   const stopDragging = (event: PointerEvent<HTMLDivElement>) => {
     dragRef.current.active = false
-    dragRef.current.moved = false
     if (scrollerRef.current?.hasPointerCapture(event.pointerId)) {
       try {
         scrollerRef.current.releasePointerCapture(event.pointerId)
       } catch {}
+    }
+    // Small timeout to prevent click event on link when dragged
+    if (dragRef.current.moved) {
+      setTimeout(() => {
+        dragRef.current.moved = false
+      }, 50)
+    }
+  }
+
+  const handleClickCapture = (event: React.MouseEvent) => {
+    if (dragRef.current.moved) {
+      event.preventDefault()
+      event.stopPropagation()
     }
   }
 
@@ -138,6 +148,7 @@ export function BibliotecaCategorySection({
           onPointerUp={stopDragging}
           onPointerCancel={stopDragging}
           onPointerLeave={stopDragging}
+          onClickCapture={handleClickCapture}
           className="relative z-0 flex h-full min-w-0 max-w-full cursor-grab select-none items-start gap-3 overflow-x-auto scroll-smooth px-3 pt-2 active:cursor-grabbing [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:gap-4 sm:px-4"
         >
           {books.map((book, index) => (
