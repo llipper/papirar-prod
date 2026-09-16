@@ -1,4 +1,4 @@
-﻿import { NextRequest, NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 import { classifyRequest, extractRealIp } from "@/lib/security/threat-detector"
 
 // Rotas que o middleware nunca deve interceptar
@@ -13,6 +13,19 @@ const BYPASS_PREFIXES = [
   "/sitemap",
 ]
 
+// Domínio canônico para onde o tráfego fora dos hosts permitidos é redirecionado
+const CANONICAL_HOST = "www.papirar.com"
+
+// Hosts que podem servir a aplicação sem redirecionamento.
+// Inclua aqui domínios próprios adicionais se necessário.
+const ALLOWED_HOSTS = new Set([
+  CANONICAL_HOST,
+  "papirar.com",
+  "auth.papirar.com",
+  "localhost",
+])
+
+
 function generateRequestId(): string {
   return Math.random().toString(36).slice(2, 11)
 }
@@ -23,6 +36,19 @@ export function middleware(req: NextRequest) {
   // Ignora assets internos do Next.js
   if (BYPASS_PREFIXES.some((p) => pathname.startsWith(p))) {
     return NextResponse.next()
+  }
+
+  // ── Enforcement de domínio canônico ──────────────────────────────────────
+  // Redireciona para www.papirar.com qualquer acesso via URL de preview da
+  // Vercel (*.vercel.app) ou qualquer host não listado em ALLOWED_HOSTS.
+  // Isso impede que o deployment direto da Vercel seja acessível publicamente.
+  const host = (req.headers.get("host") ?? "").split(":")[0] // remove porta
+  if (!ALLOWED_HOSTS.has(host)) {
+    const canonical = new URL(req.url)
+    canonical.host = CANONICAL_HOST
+    canonical.port = ""
+    canonical.protocol = "https:"
+    return NextResponse.redirect(canonical, { status: 301 })
   }
 
   const requestId = generateRequestId()
