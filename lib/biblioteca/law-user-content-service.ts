@@ -28,7 +28,8 @@ async function d1Content(method: string, body?: unknown, query = "") {
   if (!token) throw new Error("Sessão expirada.")
   const response = await fetch(`${apiBase}/user-content${query}`, { method, headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: body === undefined ? undefined : JSON.stringify(body) })
   if (!response.ok) throw new Error("Não foi possível salvar o conteúdo.")
-  return response.json()
+  const text = await response.text()
+  return text ? JSON.parse(text) : {}
 }
 
 export async function loadLawUserContent(reading: LawReading) {
@@ -63,17 +64,45 @@ export async function updateLawAnnotation(annotationId: string, note: string) {
   return { id: annotationId, nodeKey: "", selectedText: "", startOffset: 0, endOffset: 0, note: note.trim() }
 }
 
-export async function removeLawHighlights(reading: LawReading, input: { nodeKey: string; startOffset: number; endOffset: number }) {
-  const existing = (await loadLawUserContent(reading)).highlights.filter((item) => item.nodeKey === input.nodeKey)
+export async function removeLawHighlights(
+  reading: LawReading,
+  input: { nodeKey: string; startOffset: number; endOffset: number; selectedText?: string },
+  currentHighlights?: LawHighlight[]
+) {
+  let existing = currentHighlights
+  if (!existing || existing.length === 0) {
+    try {
+      existing = (await loadLawUserContent(reading)).highlights
+    } catch {
+      existing = []
+    }
+  }
+  const filtered = existing.filter((item) => item.nodeKey === input.nodeKey)
   const nodeText = reading.nodes.find((node) => node.nodeKey === input.nodeKey)?.text ?? ""
   const remaining: LawHighlight[] = []
-  for (const item of existing) {
-    if (item.startOffset >= input.endOffset || item.endOffset <= input.startOffset) continue
-    await d1Content("DELETE", { id: item.id })
+  for (const item of filtered) {
+    const overlaps =
+      Math.max(item.startOffset, input.startOffset) <
+        Math.min(item.endOffset, input.endOffset) ||
+      Boolean(
+        input.selectedText &&
+          (item.selectedText.includes(input.selectedText) ||
+            input.selectedText.includes(item.selectedText))
+      )
+    if (!overlaps) continue
+    try {
+      await d1Content("DELETE", { id: item.id })
+    } catch (err) {
+      console.warn("[Papirar] Falha ao deletar destaque no servidor:", err)
+    }
     const fragments = [{ start: item.startOffset, end: Math.min(item.endOffset, input.startOffset) }, { start: Math.max(item.startOffset, input.endOffset), end: item.endOffset }].filter((part) => part.end > part.start)
     for (const fragment of fragments) {
-      const saved = await createLawHighlight(reading, { nodeKey: input.nodeKey, startOffset: fragment.start, endOffset: fragment.end, selectedText: nodeText.slice(fragment.start, fragment.end), color: item.color })
-      remaining.push(saved)
+      try {
+        const saved = await createLawHighlight(reading, { nodeKey: input.nodeKey, startOffset: fragment.start, endOffset: fragment.end, selectedText: nodeText.slice(fragment.start, fragment.end), color: item.color })
+        remaining.push(saved)
+      } catch {
+        remaining.push({ id: `${item.id}-${fragment.start}`, nodeKey: input.nodeKey, startOffset: fragment.start, endOffset: fragment.end, selectedText: nodeText.slice(fragment.start, fragment.end), color: item.color })
+      }
     }
   }
   return remaining
