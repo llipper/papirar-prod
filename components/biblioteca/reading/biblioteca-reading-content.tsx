@@ -54,8 +54,6 @@ export function BibliotecaReadingContent({
   const {
     highlights,
     annotations,
-    noteDraft,
-    setNoteDraft,
     isSavingContent,
     saveHighlight,
     saveAnnotation,
@@ -237,8 +235,6 @@ export function BibliotecaReadingContent({
           <ReadingAnnotationDialog
             open={isNoteOpen}
             onOpenChange={setIsNoteOpen}
-            noteDraft={noteDraft}
-            onNoteDraftChange={setNoteDraft}
             isSavingContent={isSavingContent}
             onSave={saveAnnotation}
             selectedText={selection?.selectedText}

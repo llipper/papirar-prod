@@ -78,7 +78,6 @@ export function useReadingAnnotations({
   const [highlights, setHighlights] = useState<LawHighlight[]>([])
   const [annotations, setAnnotations] = useState<LawAnnotation[]>([])
   const [isNoteOpen, setIsNoteOpen] = useState(false)
-  const [noteDraft, setNoteDraft] = useState("")
   const [isSavingContent, setIsSavingContent] = useState(false)
 
   const selectionRef = useRef<TextSelection | null>(selection)
@@ -225,13 +224,13 @@ export function useReadingAnnotations({
   }
 
   // 3. Salva somente após confirmação remota: evita apresentar como persistido algo que falhou.
-  const saveAnnotation = async (details: AnnotationDetails) => {
+  const saveAnnotation = async (note: string, details: AnnotationDetails) => {
     const activeSelection = selectionRef.current ?? selection
-    if (!reading || !activeSelection || !noteDraft.trim()) {
+    if (!reading || !activeSelection || !note.trim()) {
       throw new Error("Selecione um trecho e escreva a anotação antes de salvar.")
     }
 
-    const noteText = noteDraft.trim()
+    const noteText = note.trim()
     setIsSavingContent(true)
     try {
       const saved = await createLawAnnotation(reading, {
@@ -243,7 +242,6 @@ export function useReadingAnnotations({
         ...details,
       })
       setAnnotations((current) => [...current, saved])
-      setNoteDraft("")
       setIsNoteOpen(false)
       clearTextSelection()
     } finally {
@@ -287,8 +285,6 @@ export function useReadingAnnotations({
     setAnnotations,
     isNoteOpen,
     setIsNoteOpen,
-    noteDraft,
-    setNoteDraft,
     isSavingContent,
     saveHighlight,
     saveAnnotation,

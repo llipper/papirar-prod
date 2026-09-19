@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useRef, useState } from "react"
+import React, { useCallback, useEffect, useRef, useState } from "react"
 import {
   AlertCircle,
   Bold,
@@ -24,7 +24,6 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
 import {
   Dialog,
   DialogContent,
@@ -47,10 +46,8 @@ import {
 export interface ReadingAnnotationDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  noteDraft: string
-  onNoteDraftChange: (value: string) => void
   isSavingContent: boolean
-  onSave: (details: AnnotationDetails) => Promise<void>
+  onSave: (note: string, details: AnnotationDetails) => Promise<void>
   selectedText?: string
   nodeLocation?: string
   onClearSelection?: () => void
@@ -73,24 +70,107 @@ const ANNOTATION_TYPES = [
   { id: "review", label: "Revisar", icon: RotateCcw },
 ] as const satisfies ReadonlyArray<{ id: LawAnnotationType; label: string; icon: typeof FileText }>
 
+function markdownFromNode(node: Node): string {
+  if (node.nodeType === Node.TEXT_NODE) return node.textContent ?? ""
+  if (node.nodeType !== Node.ELEMENT_NODE) return ""
+
+  const element = node as HTMLElement
+  const content = Array.from(element.childNodes).map(markdownFromNode).join("")
+
+  switch (element.tagName) {
+    case "BR":
+      return "\n"
+    case "STRONG":
+    case "B":
+      return `**${content}**`
+    case "EM":
+    case "I":
+      return `*${content}*`
+    case "U":
+      return `<u>${content}</u>`
+    case "A": {
+      const href = element.getAttribute("href") ?? ""
+      return /^https?:\/\//i.test(href) ? `[${content}](${href})` : content
+    }
+    case "H3":
+      return `### ${content.trim()}\n\n`
+    case "H4":
+      return `#### ${content.trim()}\n\n`
+    case "BLOCKQUOTE":
+      return `> ${content.trim()}\n\n`
+    case "LI": {
+      const parent = element.parentElement
+      const index = Array.from(parent?.children ?? []).indexOf(element) + 1
+      const prefix = parent?.tagName === "OL" ? `${index}. ` : "- "
+      return `${prefix}${content.trim()}\n`
+    }
+    case "P":
+    case "DIV":
+      return `${content}\n`
+    default:
+      return content
+  }
+}
+
+function editorMarkdown(editor: HTMLElement): string {
+  return Array.from(editor.childNodes)
+    .map(markdownFromNode)
+    .join("")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim()
+}
+
 export function ReadingAnnotationDialog({
   open,
   onOpenChange,
-  noteDraft,
-  onNoteDraftChange,
   isSavingContent,
   onSave,
   selectedText,
   nodeLocation,
   onClearSelection,
 }: ReadingAnnotationDialogProps) {
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const editorRef = useRef<HTMLDivElement>(null)
+  const selectionRangeRef = useRef<Range | null>(null)
   const [selectedColor, setSelectedColor] = useState<LawAnnotationColor>(defaultAnnotationDetails.color)
   const [selectedType, setSelectedType] = useState<LawAnnotationType>(defaultAnnotationDetails.type)
   const [tags, setTags] = useState<string[]>([])
   const [tagInput, setTagInput] = useState("")
   const [reminderDate, setReminderDate] = useState("")
   const [saveError, setSaveError] = useState<string | null>(null)
+  const [noteLength, setNoteLength] = useState(0)
+
+  const syncNoteLength = useCallback(() => {
+    if (!editorRef.current) return ""
+    const note = editorMarkdown(editorRef.current)
+    setNoteLength(note.length)
+    return note
+  }, [])
+
+  const rememberSelection = useCallback(() => {
+    const editor = editorRef.current
+    const selection = window.getSelection()
+    if (!editor || !selection?.rangeCount) return
+    const range = selection.getRangeAt(0)
+    if (editor.contains(range.commonAncestorContainer)) {
+      selectionRangeRef.current = range.cloneRange()
+    }
+  }, [])
+
+  const restoreSelection = useCallback(() => {
+    const range = selectionRangeRef.current
+    if (!range) return
+    const selection = window.getSelection()
+    selection?.removeAllRanges()
+    selection?.addRange(range)
+  }, [])
+
+  useEffect(() => {
+    if (!open || !editorRef.current) return
+    editorRef.current.replaceChildren()
+    selectionRangeRef.current = null
+    setNoteLength(0)
+    window.requestAnimationFrame(() => editorRef.current?.focus())
+  }, [open])
 
   const resetDetails = () => {
     setSelectedColor(defaultAnnotationDetails.color)
@@ -109,24 +189,29 @@ export function ReadingAnnotationDialog({
     setTagInput("")
   }
 
-  const insertFormatting = (prefix: string, suffix: string = "") => {
-    const textarea = textareaRef.current
-    if (!textarea) return
+  const applyCommand = (command: string, value?: string) => {
+    editorRef.current?.focus()
+    restoreSelection()
+    document.execCommand(command, false, value)
+    rememberSelection()
+    syncNoteLength()
+  }
 
-    const start = textarea.selectionStart
-    const end = textarea.selectionEnd
-    const selected = noteDraft.substring(start, end)
-    const replacement = `${prefix}${selected || "texto"}${suffix}`
+  const applyNormalText = () => {
+    editorRef.current?.focus()
+    restoreSelection()
+    document.execCommand("formatBlock", false, "p")
+    document.execCommand("removeFormat", false)
+    rememberSelection()
+    syncNoteLength()
+  }
 
-    const nextValue =
-      noteDraft.substring(0, start) + replacement + noteDraft.substring(end)
-    onNoteDraftChange(nextValue)
-
-    window.setTimeout(() => {
-      textarea.focus()
-      const newPos = start + prefix.length + (selected ? selected.length : 5)
-      textarea.setSelectionRange(newPos, newPos)
-    }, 0)
+  const insertLink = () => {
+    const selected = window.getSelection()?.toString().trim()
+    if (!selected) return
+    const url = window.prompt("Cole o link completo (https://...)")?.trim()
+    if (!url || !/^https?:\/\//i.test(url)) return
+    applyCommand("createLink", url)
   }
 
   const handleAddTag = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -141,26 +226,29 @@ export function ReadingAnnotationDialog({
   }
 
   const handleClearSelection = () => {
-    onNoteDraftChange("")
+    editorRef.current?.replaceChildren()
+    setNoteLength(0)
     resetDetails()
     onClearSelection?.()
     onOpenChange(false)
   }
 
   const handleCancel = () => {
-    onNoteDraftChange("")
+    editorRef.current?.replaceChildren()
+    setNoteLength(0)
     resetDetails()
     onOpenChange(false)
   }
 
   const handleSave = async () => {
+    const note = syncNoteLength()
     const pendingTag = tagInput.trim().replace(/^,|,$/g, "")
     const finalTags = pendingTag && !tags.some((tag) => tag.localeCompare(pendingTag, undefined, { sensitivity: "accent" }) === 0)
       ? [...tags, pendingTag.slice(0, 48)].slice(0, 12)
       : tags
     setSaveError(null)
     try {
-      await onSave({
+      await onSave(note, {
         color: selectedColor,
         type: selectedType,
         tags: finalTags,
@@ -206,13 +294,13 @@ export function ReadingAnnotationDialog({
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start">
-                  <DropdownMenuItem onClick={() => insertFormatting("")}>
+                  <DropdownMenuItem onClick={applyNormalText}>
                     Normal
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => insertFormatting("### ")}>
+                  <DropdownMenuItem onClick={() => applyCommand("formatBlock", "h3")}>
                     Título
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => insertFormatting("#### ")}>
+                  <DropdownMenuItem onClick={() => applyCommand("formatBlock", "h4")}>
                     Subtítulo
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -225,7 +313,8 @@ export function ReadingAnnotationDialog({
                 variant="ghost"
                 size="icon"
                 className="size-7 rounded-md hover:bg-muted hover:text-foreground"
-                onClick={() => insertFormatting("**", "**")}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => applyCommand("bold")}
                 title="Negrito"
               >
                 <Bold className="size-3.5" />
@@ -236,7 +325,8 @@ export function ReadingAnnotationDialog({
                 variant="ghost"
                 size="icon"
                 className="size-7 rounded-md hover:bg-muted hover:text-foreground"
-                onClick={() => insertFormatting("*", "*")}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => applyCommand("italic")}
                 title="Itálico"
               >
                 <Italic className="size-3.5" />
@@ -247,7 +337,8 @@ export function ReadingAnnotationDialog({
                 variant="ghost"
                 size="icon"
                 className="size-7 rounded-md hover:bg-muted hover:text-foreground"
-                onClick={() => insertFormatting("<u>", "</u>")}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => applyCommand("underline")}
                 title="Sublinhado"
               >
                 <Underline className="size-3.5" />
@@ -260,7 +351,8 @@ export function ReadingAnnotationDialog({
                 variant="ghost"
                 size="icon"
                 className="size-7 rounded-md hover:bg-muted hover:text-foreground"
-                onClick={() => insertFormatting("- ")}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => applyCommand("insertUnorderedList")}
                 title="Lista com marcadores"
               >
                 <List className="size-3.5" />
@@ -271,7 +363,8 @@ export function ReadingAnnotationDialog({
                 variant="ghost"
                 size="icon"
                 className="size-7 rounded-md hover:bg-muted hover:text-foreground"
-                onClick={() => insertFormatting("1. ")}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => applyCommand("insertOrderedList")}
                 title="Lista numerada"
               >
                 <ListOrdered className="size-3.5" />
@@ -284,7 +377,8 @@ export function ReadingAnnotationDialog({
                 variant="ghost"
                 size="icon"
                 className="size-7 rounded-md hover:bg-muted hover:text-foreground"
-                onClick={() => insertFormatting("[", "](url)")}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={insertLink}
                 title="Inserir link"
               >
                 <Link className="size-3.5" />
@@ -295,28 +389,56 @@ export function ReadingAnnotationDialog({
                 variant="ghost"
                 size="icon"
                 className="size-7 rounded-md hover:bg-muted hover:text-foreground"
-                onClick={() => insertFormatting("> ")}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => applyCommand("formatBlock", "blockquote")}
                 title="Citação"
               >
                 <Quote className="size-3.5" />
               </Button>
             </div>
 
-            {/* TEXTAREA DO EDITOR */}
-            <Textarea
-              ref={textareaRef}
-              value={noteDraft}
-              onChange={(event) => onNoteDraftChange(event.target.value)}
-              placeholder="Escreva sua anotação aqui..."
-              maxLength={5000}
-              autoFocus
-              className="min-h-[260px] flex-1 resize-none border-0 bg-transparent p-1 shadow-none focus-visible:ring-0 font-reading text-base leading-relaxed placeholder:text-muted-foreground/60"
+            {/* EDITOR VISUAL: o conteúdo só sai do modal ao salvar. */}
+            <div
+              ref={editorRef}
+              contentEditable
+              role="textbox"
+              aria-multiline="true"
+              aria-label="Conteúdo da anotação"
+              data-placeholder="Escreva sua anotação aqui..."
+              suppressContentEditableWarning
+              onBeforeInput={(event) => {
+                const typed = (event.nativeEvent as InputEvent).data ?? ""
+                const currentLength = editorRef.current?.innerText.length ?? 0
+                if (typed && currentLength + typed.length > 5000) {
+                  event.preventDefault()
+                }
+              }}
+              onInput={() => {
+                rememberSelection()
+                syncNoteLength()
+              }}
+              onKeyUp={rememberSelection}
+              onMouseUp={rememberSelection}
+              onPaste={(event) => {
+                event.preventDefault()
+                const available = Math.max(
+                  0,
+                  5000 - (editorRef.current?.innerText.length ?? 0)
+                )
+                const text = event.clipboardData
+                  .getData("text/plain")
+                  .slice(0, available)
+                document.execCommand("insertText", false, text)
+                rememberSelection()
+                syncNoteLength()
+              }}
+              className="min-h-[260px] flex-1 whitespace-pre-wrap rounded-md p-1 font-reading text-base leading-relaxed outline-none empty:before:pointer-events-none empty:before:text-muted-foreground/60 empty:before:content-[attr(data-placeholder)]"
             />
 
             {/* RODAPÉ DO EDITOR */}
             <div className="flex items-center justify-between pt-2 text-[11px] text-muted-foreground border-t border-border/40">
               <span>Esta anotação ficará vinculada ao trecho selecionado.</span>
-              <span>{noteDraft.length}/5000</span>
+              <span>{noteLength}/5000</span>
             </div>
           </div>
 
@@ -480,7 +602,7 @@ export function ReadingAnnotationDialog({
             <Button
               type="button"
               size="sm"
-              disabled={!noteDraft.trim() || isSavingContent}
+              disabled={noteLength === 0 || isSavingContent}
               onClick={handleSave}
               className="rounded-xl text-xs bg-black text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-white/90 font-medium px-4 gap-1.5 shadow-xs"
             >
