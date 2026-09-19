@@ -37,6 +37,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  defaultAnnotationDetails,
+  type AnnotationDetails,
+  type LawAnnotationColor,
+  type LawAnnotationType,
+} from "@/lib/biblioteca/law-user-content-service"
 
 export interface ReadingAnnotationDialogProps {
   open: boolean
@@ -44,7 +50,7 @@ export interface ReadingAnnotationDialogProps {
   noteDraft: string
   onNoteDraftChange: (value: string) => void
   isSavingContent: boolean
-  onSave: () => void
+  onSave: (details: AnnotationDetails) => Promise<void>
   selectedText?: string
   nodeLocation?: string
   onClearSelection?: () => void
@@ -57,15 +63,15 @@ const COLOR_OPTIONS = [
   { id: "green", bg: "#4ADE80", label: "Verde" },
   { id: "purple", bg: "#C084FC", label: "Roxo" },
   { id: "gray", bg: "#E2E8F0", label: "Cinza" },
-]
+] as const satisfies ReadonlyArray<{ id: LawAnnotationColor; bg: string; label: string }>
 
 const ANNOTATION_TYPES = [
-  { id: "geral", label: "Geral", icon: FileText },
-  { id: "duvida", label: "Dúvida", icon: HelpCircle },
-  { id: "importante", label: "Importante", icon: AlertCircle },
-  { id: "resumo", label: "Resumo", icon: Layers },
-  { id: "revisar", label: "Revisar", icon: RotateCcw },
-]
+  { id: "general", label: "Geral", icon: FileText },
+  { id: "question", label: "Dúvida", icon: HelpCircle },
+  { id: "important", label: "Importante", icon: AlertCircle },
+  { id: "summary", label: "Resumo", icon: Layers },
+  { id: "review", label: "Revisar", icon: RotateCcw },
+] as const satisfies ReadonlyArray<{ id: LawAnnotationType; label: string; icon: typeof FileText }>
 
 export function ReadingAnnotationDialog({
   open,
@@ -79,11 +85,29 @@ export function ReadingAnnotationDialog({
   onClearSelection,
 }: ReadingAnnotationDialogProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
-  const [selectedColor, setSelectedColor] = useState("yellow")
-  const [selectedType, setSelectedType] = useState("geral")
-  const [tags, setTags] = useState<string[]>(["Conceito", "Princípio", "Federalismo"])
+  const [selectedColor, setSelectedColor] = useState<LawAnnotationColor>(defaultAnnotationDetails.color)
+  const [selectedType, setSelectedType] = useState<LawAnnotationType>(defaultAnnotationDetails.type)
+  const [tags, setTags] = useState<string[]>([])
   const [tagInput, setTagInput] = useState("")
   const [reminderDate, setReminderDate] = useState("")
+  const [saveError, setSaveError] = useState<string | null>(null)
+
+  const resetDetails = () => {
+    setSelectedColor(defaultAnnotationDetails.color)
+    setSelectedType(defaultAnnotationDetails.type)
+    setTags([])
+    setTagInput("")
+    setReminderDate("")
+    setSaveError(null)
+  }
+
+  const commitTag = () => {
+    const trimmed = tagInput.trim().replace(/^,|,$/g, "")
+    if (trimmed && !tags.some((tag) => tag.localeCompare(trimmed, undefined, { sensitivity: "accent" }) === 0) && tags.length < 12) {
+      setTags((current) => [...current, trimmed.slice(0, 48)])
+    }
+    setTagInput("")
+  }
 
   const insertFormatting = (prefix: string, suffix: string = "") => {
     const textarea = textareaRef.current
@@ -108,11 +132,7 @@ export function ReadingAnnotationDialog({
   const handleAddTag = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" || e.key === ",") {
       e.preventDefault()
-      const trimmed = tagInput.trim().replace(/^,|,$/g, "")
-      if (trimmed && !tags.includes(trimmed)) {
-        setTags([...tags, trimmed])
-      }
-      setTagInput("")
+      commitTag()
     }
   }
 
@@ -121,12 +141,39 @@ export function ReadingAnnotationDialog({
   }
 
   const handleClearSelection = () => {
+    onNoteDraftChange("")
+    resetDetails()
     onClearSelection?.()
     onOpenChange(false)
   }
 
+  const handleCancel = () => {
+    onNoteDraftChange("")
+    resetDetails()
+    onOpenChange(false)
+  }
+
+  const handleSave = async () => {
+    const pendingTag = tagInput.trim().replace(/^,|,$/g, "")
+    const finalTags = pendingTag && !tags.some((tag) => tag.localeCompare(pendingTag, undefined, { sensitivity: "accent" }) === 0)
+      ? [...tags, pendingTag.slice(0, 48)].slice(0, 12)
+      : tags
+    setSaveError(null)
+    try {
+      await onSave({
+        color: selectedColor,
+        type: selectedType,
+        tags: finalTags,
+        reminderAt: reminderDate ? new Date(reminderDate).toISOString() : null,
+      })
+      resetDetails()
+    } catch (reason) {
+      setSaveError(reason instanceof Error ? reason.message : "Não foi possível salvar a anotação.")
+    }
+  }
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(nextOpen) => nextOpen ? onOpenChange(true) : handleCancel()}>
       <DialogContent className="sm:max-w-4xl max-w-[95vw] p-6 rounded-2xl max-h-[92vh] overflow-y-auto">
         {/* CABEÇALHO */}
         <DialogHeader className="space-y-1">
@@ -336,6 +383,7 @@ export function ReadingAnnotationDialog({
                 value={tagInput}
                 onChange={(e) => setTagInput(e.target.value)}
                 onKeyDown={handleAddTag}
+                onBlur={commitTag}
                 placeholder="Adicione uma tag..."
                 className="h-8 rounded-xl text-xs"
               />
@@ -400,6 +448,12 @@ export function ReadingAnnotationDialog({
           </div>
         </div>
 
+        {saveError && (
+          <p role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
+            {saveError}
+          </p>
+        )}
+
         {/* RODAPÉ DO MODAL */}
         <div className="flex items-center justify-between pt-3 border-t border-border/80 mt-2">
           <Button
@@ -419,7 +473,7 @@ export function ReadingAnnotationDialog({
               variant="outline"
               size="sm"
               className="rounded-xl text-xs"
-              onClick={() => onOpenChange(false)}
+              onClick={handleCancel}
             >
               Cancelar
             </Button>
@@ -427,7 +481,7 @@ export function ReadingAnnotationDialog({
               type="button"
               size="sm"
               disabled={!noteDraft.trim() || isSavingContent}
-              onClick={onSave}
+              onClick={handleSave}
               className="rounded-xl text-xs bg-black text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-white/90 font-medium px-4 gap-1.5 shadow-xs"
             >
               <FileEdit className="size-3.5" />

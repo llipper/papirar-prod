@@ -1,12 +1,26 @@
 import { waitForBrowserSession } from "@/lib/auth/browser-session"
 import { firebaseAuth } from "@/lib/firebase/client"
 import type { LawReading } from "./reading-service"
+import {
+  normalizeAnnotationDetails,
+  type AnnotationDetails,
+  type LawAnnotation,
+} from "./user-content/types"
+
+export {
+  annotationColors,
+  annotationTypes,
+  defaultAnnotationDetails,
+  type AnnotationDetails,
+  type LawAnnotation,
+  type LawAnnotationColor,
+  type LawAnnotationType,
+} from "./user-content/types"
 
 export type LawHighlightColor = "yellow" | "red" | "blue" | "green" | "purple" | "orange" | "beige"
 export type LawHighlightStyle = "highlight" | "underline"
 export type LawHighlight = { id: string; nodeKey: string; selectedText: string; startOffset: number; endOffset: number; color: LawHighlightColor; style: LawHighlightStyle }
-export type LawAnnotation = { id: string; nodeKey: string; selectedText: string; startOffset: number; endOffset: number; note: string }
-export type LawUserContentOverviewItem = { id: string; type: "highlight" | "annotation"; lawId: string; lawVersionId: string; nodeKey: string; selectedText: string; startOffset: number; endOffset: number; color?: LawHighlightColor; note?: string; createdAt: string | null; archivedAt: string | null }
+export type LawUserContentOverviewItem = { id: string; type: "highlight" | "annotation"; lawId: string; lawVersionId: string; nodeKey: string; selectedText: string; startOffset: number; endOffset: number; color?: LawHighlightColor; note?: string; annotation?: AnnotationDetails; createdAt: string | null; archivedAt: string | null }
 
 function highlightStyle(value: unknown): LawHighlightStyle {
   return value === "underline" ? "underline" : "highlight"
@@ -41,13 +55,13 @@ export async function loadLawUserContent(reading: LawReading) {
   const rows = await d1Content("GET", undefined, `?lawId=${encodeURIComponent(reading.lawId)}&lawVersionId=${encodeURIComponent(reading.versionId)}`) as Array<Record<string, unknown>>
   return {
     highlights: rows.filter((item) => item.type === "highlight" && !item.archived_at).map((item): LawHighlight => ({ id: String(item.id), nodeKey: String(item.node_key), selectedText: String(item.selected_text), startOffset: Number(item.start_offset), endOffset: Number(item.end_offset), color: item.color as LawHighlightColor, style: highlightStyle(item.highlight_style) })),
-    annotations: rows.filter((item) => item.type === "annotation" && !item.archived_at).map((item) => ({ id: String(item.id), nodeKey: String(item.node_key), selectedText: String(item.selected_text), startOffset: Number(item.start_offset), endOffset: Number(item.end_offset), note: String(item.note ?? "") })),
+    annotations: rows.filter((item) => item.type === "annotation" && !item.archived_at).map((item): LawAnnotation => ({ id: String(item.id), nodeKey: String(item.node_key), selectedText: String(item.selected_text), startOffset: Number(item.start_offset), endOffset: Number(item.end_offset), note: String(item.note ?? ""), ...normalizeAnnotationDetails(item) })),
   }
 }
 
 export async function loadLawUserContentOverview(includeArchived = false) {
   const rows = await d1Content("GET") as Array<Record<string, unknown>>
-  return rows.map((item) => ({ id: String(item.id), type: item.type as "highlight" | "annotation", lawId: String(item.law_id), lawVersionId: String(item.law_version_id), nodeKey: String(item.node_key), selectedText: String(item.selected_text), startOffset: Number(item.start_offset), endOffset: Number(item.end_offset), color: item.color as LawHighlightColor, note: item.note ? String(item.note) : undefined, createdAt: iso(item.created_at), archivedAt: iso(item.archived_at) })).filter((item) => includeArchived || !item.archivedAt).sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""))
+  return rows.map((item): LawUserContentOverviewItem => ({ id: String(item.id), type: item.type as "highlight" | "annotation", lawId: String(item.law_id), lawVersionId: String(item.law_version_id), nodeKey: String(item.node_key), selectedText: String(item.selected_text), startOffset: Number(item.start_offset), endOffset: Number(item.end_offset), color: item.color as LawHighlightColor, note: item.note ? String(item.note) : undefined, annotation: item.type === "annotation" ? normalizeAnnotationDetails(item) : undefined, createdAt: iso(item.created_at), archivedAt: iso(item.archived_at) })).filter((item) => includeArchived || !item.archivedAt).sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""))
 }
 
 export async function archiveLawUserContent(item: LawUserContentOverviewItem) { await d1Content("PATCH", { id: item.id, archivedAt: new Date().toISOString() }) }
@@ -60,7 +74,7 @@ export async function createLawHighlight(reading: LawReading, input: Omit<LawHig
 }
 
 export async function createLawAnnotation(reading: LawReading, input: Omit<LawAnnotation, "id" | "nodeKey"> & { nodeKey: string }) {
-  const saved = await d1Content("POST", { type: "annotation", lawId: reading.lawId, lawVersionId: reading.versionId, nodeKey: input.nodeKey, startOffset: input.startOffset, endOffset: input.endOffset, note: input.note, selectedText: input.selectedText }) as { id: string }
+  const saved = await d1Content("POST", { type: "annotation", lawId: reading.lawId, lawVersionId: reading.versionId, nodeKey: input.nodeKey, startOffset: input.startOffset, endOffset: input.endOffset, note: input.note, selectedText: input.selectedText, annotationColor: input.color, annotationType: input.type, tags: input.tags, reminderAt: input.reminderAt }) as { id: string }
   return { id: saved.id, ...input }
 }
 

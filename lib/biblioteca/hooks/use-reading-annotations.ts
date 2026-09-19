@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
+import { firebaseAuth } from "@/lib/firebase/client"
 import type { LawReading } from "@/lib/biblioteca/reading-service"
 import {
   createLawAnnotation,
@@ -12,6 +13,7 @@ import {
   type LawHighlight,
   type LawHighlightColor,
   type LawHighlightStyle,
+  type AnnotationDetails,
 } from "@/lib/biblioteca/law-user-content-service"
 import type { TextSelection } from "./use-reading-selection"
 
@@ -21,8 +23,9 @@ export interface UseReadingAnnotationsProps {
   clearTextSelection: () => void
 }
 
-function getCacheKey(reading: LawReading): string {
-  return `papirar:law-content:${reading.lawId}:${reading.versionId}`
+function getCacheKey(reading: LawReading): string | null {
+  const uid = firebaseAuth.currentUser?.uid
+  return uid ? `papirar:law-content:${uid}:${reading.lawId}:${reading.versionId}` : null
 }
 
 function readLocalUserContent(reading: LawReading): {
@@ -31,7 +34,9 @@ function readLocalUserContent(reading: LawReading): {
 } | null {
   if (typeof window === "undefined") return null
   try {
-    const raw = window.localStorage.getItem(getCacheKey(reading))
+    const key = getCacheKey(reading)
+    if (!key) return null
+    const raw = window.localStorage.getItem(key)
     if (!raw) return null
     const cached = JSON.parse(raw) as {
       highlights?: Array<Omit<LawHighlight, "style"> & { style?: unknown }>
@@ -57,7 +62,9 @@ function writeLocalUserContent(
 ) {
   if (typeof window === "undefined") return
   try {
-    window.localStorage.setItem(getCacheKey(reading), JSON.stringify(data))
+    const key = getCacheKey(reading)
+    if (!key) return
+    window.localStorage.setItem(key, JSON.stringify(data))
   } catch {
     // quota ou modo restrito
   }
@@ -217,29 +224,14 @@ export function useReadingAnnotations({
     }
   }
 
-  // 3. SALVAR ANOTAÇÃO: 100% Otimista (0ms na tela) + Sync em Background
-  const saveAnnotation = async () => {
+  // 3. Salva somente após confirmação remota: evita apresentar como persistido algo que falhou.
+  const saveAnnotation = async (details: AnnotationDetails) => {
     const activeSelection = selectionRef.current ?? selection
-    if (!reading || !activeSelection || !noteDraft.trim()) return
-
-    const tempId = `temp-note-${Date.now()}`
-    const noteText = noteDraft.trim()
-    const optimisticAnnotation: LawAnnotation = {
-      id: tempId,
-      nodeKey: activeSelection.nodeKey,
-      selectedText: activeSelection.selectedText,
-      startOffset: activeSelection.startOffset,
-      endOffset: activeSelection.endOffset,
-      note: noteText,
+    if (!reading || !activeSelection || !noteDraft.trim()) {
+      throw new Error("Selecione um trecho e escreva a anotação antes de salvar.")
     }
 
-    // Atualização imediata local
-    setAnnotations((current) => [...current, optimisticAnnotation])
-    setNoteDraft("")
-    setIsNoteOpen(false)
-    clearTextSelection()
-
-    // Sincronização em background
+    const noteText = noteDraft.trim()
     setIsSavingContent(true)
     try {
       const saved = await createLawAnnotation(reading, {
@@ -248,17 +240,12 @@ export function useReadingAnnotations({
         startOffset: activeSelection.startOffset,
         endOffset: activeSelection.endOffset,
         note: noteText,
+        ...details,
       })
-      if (saved) {
-        setAnnotations((current) =>
-          current.map((item) => (item.id === tempId ? saved : item))
-        )
-      }
-    } catch (err) {
-      console.warn(
-        "[Papirar] Anotação mantida localmente, sincronização remota falhou:",
-        err
-      )
+      setAnnotations((current) => [...current, saved])
+      setNoteDraft("")
+      setIsNoteOpen(false)
+      clearTextSelection()
     } finally {
       setIsSavingContent(false)
     }
@@ -266,18 +253,14 @@ export function useReadingAnnotations({
 
   const updateAnnotation = async (annotationId: string, note: string) => {
     if (!note.trim()) return
-    // Atualização local imediata
-    setAnnotations((current) =>
-      current.map((item) =>
-        item.id === annotationId ? { ...item, note: note.trim() } : item
-      )
-    )
-
     setIsSavingContent(true)
     try {
       await updateLawAnnotation(annotationId, note)
-    } catch (err) {
-      console.warn("[Papirar] Erro ao sincronizar edição da anotação:", err)
+      setAnnotations((current) =>
+        current.map((item) =>
+          item.id === annotationId ? { ...item, note: note.trim() } : item
+        )
+      )
     } finally {
       setIsSavingContent(false)
     }

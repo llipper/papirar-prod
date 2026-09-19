@@ -21,6 +21,7 @@ import {
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
 import { bibliotecaBooks } from "@/lib/biblioteca/catalog-data"
 import { archiveLawUserContent, deleteLawUserContent, loadLawUserContentOverview, restoreLawUserContent, type LawHighlightColor, type LawUserContentOverviewItem } from "@/lib/biblioteca/law-user-content-service"
+import { AnnotationNoteContent } from "@/components/biblioteca/reading/annotations/annotation-note-content"
 
 type ContentPageMode = "annotations" | "highlights"
 
@@ -33,6 +34,23 @@ const colorStyles: Record<LawHighlightColor, string> = {
   orange: "bg-orange-100 text-orange-950",
   beige: "bg-amber-50 text-amber-950",
 }
+
+const annotationTypeLabels = {
+  general: "Geral",
+  question: "Dúvida",
+  important: "Importante",
+  summary: "Resumo",
+  review: "Revisar",
+} as const
+
+const annotationColorStyles = {
+  yellow: "bg-amber-300",
+  red: "bg-red-400",
+  blue: "bg-blue-400",
+  green: "bg-emerald-400",
+  purple: "bg-purple-400",
+  gray: "bg-slate-300",
+} as const
 
 function formatDate(value: string | null) {
   if (!value) return "Sem data"
@@ -184,7 +202,15 @@ export function UserContentPage({ mode }: { mode: ContentPageMode }) {
                               <span className="shrink-0 text-[11px] text-muted-foreground">{formatDate(item.createdAt)}</span>
                             </div>
                             <p className={`mt-3 rounded-md px-2.5 py-2 font-reading text-sm leading-5 ${item.color ? colorStyles[item.color] : "bg-muted"}`}>&ldquo;{item.selectedText}&rdquo;</p>
-                            {item.note && <p className="mt-3 whitespace-pre-line border-l-2 border-primary/40 pl-2.5 text-xs leading-5 text-muted-foreground">{item.note}</p>}
+                            {item.note && <AnnotationNoteContent note={item.note} className="mt-3 border-l-2 border-primary/40 pl-2.5 text-xs leading-5 text-muted-foreground" />}
+                            {item.annotation && (
+                              <div className="mt-3 flex flex-wrap items-center gap-1.5 text-[10px] text-muted-foreground">
+                                <span className={`size-2 rounded-full ${annotationColorStyles[item.annotation.color]}`} aria-label={`Cor ${item.annotation.color}`} />
+                                <span className="rounded-full bg-muted px-1.5 py-0.5 font-medium text-foreground">{annotationTypeLabels[item.annotation.type]}</span>
+                                {item.annotation.tags.map((tag) => <span key={tag} className="rounded-full bg-muted px-1.5 py-0.5">#{tag}</span>)}
+                                {item.annotation.reminderAt && <span className="rounded-full bg-muted px-1.5 py-0.5">Lembrete: {new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(new Date(item.annotation.reminderAt))}</span>}
+                              </div>
+                            )}
                             <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
                             {book && (
                               <Link

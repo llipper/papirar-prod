@@ -13,15 +13,26 @@ import type {
   LawAnnotation,
   LawHighlight,
 } from "@/lib/biblioteca/law-user-content-service"
+import { AnnotationNoteContent } from "./annotation-note-content"
+
+const annotationTypeLabels = {
+  general: "Geral",
+  question: "Dúvida",
+  important: "Importante",
+  summary: "Resumo",
+  review: "Revisar",
+} as const
 
 export function AnnotationText({
   text,
   note,
+  annotation,
   className,
   onSave,
 }: {
   text: string
   note: string
+  annotation: LawAnnotation
   className: string
   onSave: (note: string) => Promise<void>
 }) {
@@ -88,7 +99,11 @@ export function AnnotationText({
               <span className="mb-1 block text-[10px] font-bold tracking-[0.14em] text-muted-foreground uppercase">
                 Anotação
               </span>
-              {note}
+              <AnnotationNoteContent note={note} />
+              <span className="mt-2 flex flex-wrap gap-1">
+                <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px]">{annotationTypeLabels[annotation.type]}</span>
+                {annotation.tags.map((tag) => <span key={tag} className="rounded-full bg-muted px-1.5 py-0.5 text-[10px]">#{tag}</span>)}
+              </span>
             </span>
           )}
         </span>
@@ -106,6 +121,11 @@ export function AnnotationText({
             <p className="mt-1 text-xs text-muted-foreground">
               Clique para editar este lembrete.
             </p>
+            <div className="mt-2 flex flex-wrap gap-1 text-[10px] text-muted-foreground">
+              <span className="rounded-full bg-muted px-1.5 py-0.5">{annotationTypeLabels[annotation.type]}</span>
+              {annotation.tags.map((tag) => <span key={tag} className="rounded-full bg-muted px-1.5 py-0.5">#{tag}</span>)}
+              {annotation.reminderAt && <span className="rounded-full bg-muted px-1.5 py-0.5">Lembrete: {new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(new Date(annotation.reminderAt))}</span>}
+            </div>
           </div>
           <Textarea
             value={draft}
@@ -189,6 +209,11 @@ export function renderMarkedText(
                 : "bg-amber-100 dark:bg-amber-500/30 decoration-amber-500"
   }
 
+  const annotationClass = (item: LawAnnotation) => {
+    const color = item.color === "red" ? "red" : item.color === "blue" ? "blue" : item.color === "green" ? "emerald" : item.color === "purple" ? "purple" : item.color === "gray" ? "slate" : "amber"
+    return color === "red" ? "border-red-400" : color === "blue" ? "border-blue-400" : color === "emerald" ? "border-emerald-400" : color === "purple" ? "border-purple-400" : color === "slate" ? "border-slate-400" : "border-amber-400"
+  }
+
   const marks = [
     ...highlights.map((item) => ({
       type: "highlight" as const,
@@ -199,10 +224,11 @@ export function renderMarkedText(
     ...annotations.map((item) => ({
       type: "annotation" as const,
       id: item.id,
+      annotation: item,
       start: item.startOffset,
       end: item.endOffset,
       note: item.note,
-      className: "border-b-2 border-dashed border-primary/70",
+      className: `border-b-2 border-dashed ${annotationClass(item)}`,
     })),
   ]
     .filter(
@@ -243,6 +269,7 @@ export function renderMarkedText(
             <AnnotationText
               text={text.slice(start, end)}
               note={mark.note}
+              annotation={mark.annotation}
               className={mark.className}
               onSave={(note) => onAnnotationUpdated(mark.id, note)}
             />
