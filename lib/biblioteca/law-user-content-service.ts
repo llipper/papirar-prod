@@ -2,10 +2,15 @@ import { waitForBrowserSession } from "@/lib/auth/browser-session"
 import { firebaseAuth } from "@/lib/firebase/client"
 import type { LawReading } from "./reading-service"
 
-export type LawHighlightColor = "yellow" | "red" | "blue" | "green"
-export type LawHighlight = { id: string; nodeKey: string; selectedText: string; startOffset: number; endOffset: number; color: LawHighlightColor }
+export type LawHighlightColor = "yellow" | "red" | "blue" | "green" | "purple" | "orange" | "beige"
+export type LawHighlightStyle = "highlight" | "underline"
+export type LawHighlight = { id: string; nodeKey: string; selectedText: string; startOffset: number; endOffset: number; color: LawHighlightColor; style: LawHighlightStyle }
 export type LawAnnotation = { id: string; nodeKey: string; selectedText: string; startOffset: number; endOffset: number; note: string }
 export type LawUserContentOverviewItem = { id: string; type: "highlight" | "annotation"; lawId: string; lawVersionId: string; nodeKey: string; selectedText: string; startOffset: number; endOffset: number; color?: LawHighlightColor; note?: string; createdAt: string | null; archivedAt: string | null }
+
+function highlightStyle(value: unknown): LawHighlightStyle {
+  return value === "underline" ? "underline" : "highlight"
+}
 
 async function requireUid() {
   const user = await waitForBrowserSession()
@@ -35,7 +40,7 @@ async function d1Content(method: string, body?: unknown, query = "") {
 export async function loadLawUserContent(reading: LawReading) {
   const rows = await d1Content("GET", undefined, `?lawId=${encodeURIComponent(reading.lawId)}&lawVersionId=${encodeURIComponent(reading.versionId)}`) as Array<Record<string, unknown>>
   return {
-    highlights: rows.filter((item) => item.type === "highlight" && !item.archived_at).map((item) => ({ id: String(item.id), nodeKey: String(item.node_key), selectedText: String(item.selected_text), startOffset: Number(item.start_offset), endOffset: Number(item.end_offset), color: item.color as LawHighlightColor })),
+    highlights: rows.filter((item) => item.type === "highlight" && !item.archived_at).map((item): LawHighlight => ({ id: String(item.id), nodeKey: String(item.node_key), selectedText: String(item.selected_text), startOffset: Number(item.start_offset), endOffset: Number(item.end_offset), color: item.color as LawHighlightColor, style: highlightStyle(item.highlight_style) })),
     annotations: rows.filter((item) => item.type === "annotation" && !item.archived_at).map((item) => ({ id: String(item.id), nodeKey: String(item.node_key), selectedText: String(item.selected_text), startOffset: Number(item.start_offset), endOffset: Number(item.end_offset), note: String(item.note ?? "") })),
   }
 }
@@ -50,7 +55,7 @@ export async function restoreLawUserContent(item: LawUserContentOverviewItem) { 
 export async function deleteLawUserContent(item: LawUserContentOverviewItem) { await d1Content("DELETE", { id: item.id }) }
 
 export async function createLawHighlight(reading: LawReading, input: Omit<LawHighlight, "id" | "nodeKey"> & { nodeKey: string }) {
-  const saved = await d1Content("POST", { type: "highlight", lawId: reading.lawId, lawVersionId: reading.versionId, nodeKey: input.nodeKey, startOffset: input.startOffset, endOffset: input.endOffset, color: input.color, selectedText: input.selectedText }) as { id: string }
+  const saved = await d1Content("POST", { type: "highlight", lawId: reading.lawId, lawVersionId: reading.versionId, nodeKey: input.nodeKey, startOffset: input.startOffset, endOffset: input.endOffset, color: input.color, highlightStyle: input.style, selectedText: input.selectedText }) as { id: string }
   return { id: saved.id, ...input }
 }
 
@@ -77,7 +82,7 @@ export async function removeLawHighlights(
       existing = []
     }
   }
-  const filtered = existing.filter((item) => item.nodeKey === input.nodeKey)
+  const filtered = (existing ?? []).filter((item) => item.nodeKey === input.nodeKey)
   const nodeText = reading.nodes.find((node) => node.nodeKey === input.nodeKey)?.text ?? ""
   const remaining: LawHighlight[] = []
   for (const item of filtered) {
@@ -98,10 +103,10 @@ export async function removeLawHighlights(
     const fragments = [{ start: item.startOffset, end: Math.min(item.endOffset, input.startOffset) }, { start: Math.max(item.startOffset, input.endOffset), end: item.endOffset }].filter((part) => part.end > part.start)
     for (const fragment of fragments) {
       try {
-        const saved = await createLawHighlight(reading, { nodeKey: input.nodeKey, startOffset: fragment.start, endOffset: fragment.end, selectedText: nodeText.slice(fragment.start, fragment.end), color: item.color })
+        const saved = await createLawHighlight(reading, { nodeKey: input.nodeKey, startOffset: fragment.start, endOffset: fragment.end, selectedText: nodeText.slice(fragment.start, fragment.end), color: item.color, style: item.style })
         remaining.push(saved)
       } catch {
-        remaining.push({ id: `${item.id}-${fragment.start}`, nodeKey: input.nodeKey, startOffset: fragment.start, endOffset: fragment.end, selectedText: nodeText.slice(fragment.start, fragment.end), color: item.color })
+        remaining.push({ id: `${item.id}-${fragment.start}`, nodeKey: input.nodeKey, startOffset: fragment.start, endOffset: fragment.end, selectedText: nodeText.slice(fragment.start, fragment.end), color: item.color, style: item.style })
       }
     }
   }

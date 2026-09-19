@@ -19,7 +19,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import type { LawHighlightColor } from "@/lib/biblioteca/law-user-content-service"
+import type { LawHighlightColor, LawHighlightStyle } from "@/lib/biblioteca/law-user-content-service"
 import type { TextSelection } from "@/lib/biblioteca/hooks/use-reading-selection"
 
 export interface ReadingSelectionMenuProps {
@@ -27,7 +27,7 @@ export interface ReadingSelectionMenuProps {
   isSavingContent: boolean
   selectionHasHighlight: boolean
   onAnnotate: () => void
-  onHighlight: (color: LawHighlightColor) => void
+  onHighlight: (color: LawHighlightColor, style: LawHighlightStyle) => void
   onRemoveHighlight: (sel: TextSelection) => void
   onCancel: () => void
   containerRef?: React.RefObject<HTMLElement | null>
@@ -38,12 +38,9 @@ const PALETTE: Array<{ id: LawHighlightColor; bg: string; label: string }> = [
   { id: "blue", bg: "#60A5FA", label: "Azul" },
   { id: "green", bg: "#4ADE80", label: "Verde" },
   { id: "red", bg: "#FB7185", label: "Rosa / Vermelho" },
-]
-
-const EXTRA_PALETTE = [
-  { id: "blue" as LawHighlightColor, bg: "#A855F7", label: "Roxo" },
-  { id: "yellow" as LawHighlightColor, bg: "#FB923C", label: "Laranja" },
-  { id: "yellow" as LawHighlightColor, bg: "#FEF3C7", label: "Bege" },
+  { id: "purple", bg: "#A855F7", label: "Roxo" },
+  { id: "orange", bg: "#FB923C", label: "Laranja" },
+  { id: "beige", bg: "#FEF3C7", label: "Bege" },
 ]
 
 export function ReadingSelectionMenu({
@@ -62,7 +59,6 @@ export function ReadingSelectionMenu({
 
   const handleColorClick = (colorId: LawHighlightColor) => {
     setActiveColor(colorId)
-    onHighlight(colorId)
   }
 
   const handleCopy = async () => {
@@ -129,19 +125,7 @@ export function ReadingSelectionMenu({
                 : "hover:scale-110 opacity-90 hover:opacity-100"
             }`}
             style={{ backgroundColor: c.bg }}
-            title={`Destacar em ${c.label}`}
-            aria-label={`Destacar em ${c.label}`}
-          />
-        ))}
-
-        {EXTRA_PALETTE.map((c, index) => (
-          <button
-            key={`${c.bg}-${index}`}
-            type="button"
-            disabled={isSavingContent}
-            onClick={() => handleColorClick(c.id)}
-            className="size-6 rounded-full transition-transform duration-150 hover:scale-110 opacity-90 hover:opacity-100"
-            style={{ backgroundColor: c.bg }}
+            aria-pressed={activeColor === c.id}
             title={`Destacar em ${c.label}`}
             aria-label={`Destacar em ${c.label}`}
           />
@@ -186,7 +170,7 @@ export function ReadingSelectionMenu({
           <button
             type="button"
             disabled={isSavingContent}
-            onClick={() => onHighlight(activeColor)}
+            onClick={() => onHighlight(activeColor, "highlight")}
             className="flex flex-1 flex-col items-center justify-center gap-1 rounded-xl py-1 text-foreground/80 hover:bg-muted hover:text-foreground transition-colors"
             title="Destacar"
           >
@@ -199,7 +183,7 @@ export function ReadingSelectionMenu({
         <button
           type="button"
           disabled={isSavingContent}
-          onClick={() => onHighlight(activeColor)}
+            onClick={() => onHighlight(activeColor, "underline")}
           className="flex flex-1 flex-col items-center justify-center gap-1 rounded-xl py-1 text-foreground/80 hover:bg-muted hover:text-foreground transition-colors"
           title="Sublinhar"
         >

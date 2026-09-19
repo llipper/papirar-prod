@@ -144,19 +144,57 @@ export function renderMarkedText(
   annotations: LawAnnotation[],
   onAnnotationUpdated: (annotationId: string, note: string) => Promise<void>
 ): ReactNode {
+  const highlightClass = (item: LawHighlight) => {
+    const colorClass =
+      item.color === "red"
+        ? "red"
+        : item.color === "blue"
+          ? "blue"
+          : item.color === "green"
+            ? "emerald"
+            : item.color === "purple"
+              ? "purple"
+              : item.color === "orange"
+                ? "orange"
+                : item.color === "beige"
+                  ? "amber"
+                  : "amber"
+
+    if (item.style === "underline") {
+      return colorClass === "red"
+        ? "underline decoration-2 underline-offset-4 decoration-red-500"
+        : colorClass === "blue"
+          ? "underline decoration-2 underline-offset-4 decoration-blue-500"
+          : colorClass === "emerald"
+            ? "underline decoration-2 underline-offset-4 decoration-emerald-500"
+            : colorClass === "purple"
+              ? "underline decoration-2 underline-offset-4 decoration-purple-500"
+              : colorClass === "orange"
+                ? "underline decoration-2 underline-offset-4 decoration-orange-500"
+                : "underline decoration-2 underline-offset-4 decoration-amber-500"
+    }
+
+    return colorClass === "red"
+      ? "bg-red-100 dark:bg-red-500/30 decoration-red-500"
+      : colorClass === "blue"
+        ? "bg-blue-100 dark:bg-blue-500/30 decoration-blue-500"
+        : colorClass === "emerald"
+          ? "bg-emerald-100 dark:bg-emerald-500/30 decoration-emerald-500"
+          : colorClass === "purple"
+            ? "bg-purple-100 dark:bg-purple-500/30 decoration-purple-500"
+            : colorClass === "orange"
+              ? "bg-orange-100 dark:bg-orange-500/30 decoration-orange-500"
+              : item.color === "beige"
+                ? "bg-amber-50 dark:bg-amber-200/20 decoration-amber-400"
+                : "bg-amber-100 dark:bg-amber-500/30 decoration-amber-500"
+  }
+
   const marks = [
     ...highlights.map((item) => ({
       type: "highlight" as const,
       start: item.startOffset,
       end: item.endOffset,
-      className:
-        item.color === "red"
-          ? "bg-red-100 dark:bg-red-500/30 decoration-red-500"
-          : item.color === "blue"
-            ? "bg-blue-100 dark:bg-blue-500/30 decoration-blue-500"
-            : item.color === "green"
-              ? "bg-emerald-100 dark:bg-emerald-500/30 decoration-emerald-500"
-              : "bg-amber-100 dark:bg-amber-500/30 decoration-amber-500",
+      className: highlightClass(item),
     })),
     ...annotations.map((item) => ({
       type: "annotation" as const,

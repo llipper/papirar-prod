@@ -11,6 +11,7 @@ import {
   type LawAnnotation,
   type LawHighlight,
   type LawHighlightColor,
+  type LawHighlightStyle,
 } from "@/lib/biblioteca/law-user-content-service"
 import type { TextSelection } from "./use-reading-selection"
 
@@ -32,7 +33,19 @@ function readLocalUserContent(reading: LawReading): {
   try {
     const raw = window.localStorage.getItem(getCacheKey(reading))
     if (!raw) return null
-    return JSON.parse(raw)
+    const cached = JSON.parse(raw) as {
+      highlights?: Array<Omit<LawHighlight, "style"> & { style?: unknown }>
+      annotations?: LawAnnotation[]
+    }
+    return {
+      highlights: Array.isArray(cached.highlights)
+        ? cached.highlights.map((item): LawHighlight => ({
+            ...item,
+            style: item.style === "underline" ? "underline" : "highlight",
+          }))
+        : [],
+      annotations: Array.isArray(cached.annotations) ? cached.annotations : [],
+    }
   } catch {
     return null
   }
@@ -108,7 +121,7 @@ export function useReadingAnnotations({
   }, [reading, highlights, annotations])
 
   // 1. SALVAR DESTAQUE: 100% Otimista (0ms na tela) + Sync em Background
-  const saveHighlight = async (color: LawHighlightColor) => {
+  const saveHighlight = async (color: LawHighlightColor, style: LawHighlightStyle = "highlight") => {
     const activeSelection = selectionRef.current ?? selection
     if (!reading || !activeSelection) return
 
@@ -120,6 +133,7 @@ export function useReadingAnnotations({
       startOffset: activeSelection.startOffset,
       endOffset: activeSelection.endOffset,
       color,
+      style,
     }
 
     // Atualização imediata do React state (0ms)
@@ -135,6 +149,7 @@ export function useReadingAnnotations({
         startOffset: activeSelection.startOffset,
         endOffset: activeSelection.endOffset,
         color,
+        style,
       })
       if (saved) {
         setHighlights((current) =>

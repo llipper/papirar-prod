@@ -29,6 +29,9 @@ const colorStyles: Record<LawHighlightColor, string> = {
   red: "bg-red-100 text-red-950",
   blue: "bg-blue-100 text-blue-950",
   green: "bg-emerald-100 text-emerald-950",
+  purple: "bg-purple-100 text-purple-950",
+  orange: "bg-orange-100 text-orange-950",
+  beige: "bg-amber-50 text-amber-950",
 }
 
 function formatDate(value: string | null) {
