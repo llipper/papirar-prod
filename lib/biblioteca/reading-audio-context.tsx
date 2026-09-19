@@ -9,7 +9,7 @@ import React, {
   useState,
   type ReactNode,
 } from "react"
-import { type ReadingAudio, normalizeAudioUrl } from "./reading-service"
+import { type ReadingAudio } from "./reading-service"
 
 type ReadingAudioContextType = {
   currentAudio: ReadingAudio | null
@@ -91,7 +91,7 @@ export function ReadingAudioProvider({ children }: { children: ReactNode }) {
     const audioEl = audioRef.current
     if (!audioEl) return
 
-    const resolvedUrl = normalizeAudioUrl(audioItem.url)
+    const resolvedUrl = audioItem.url
     const isSameAudio =
       currentAudio?.key === audioItem.key && currentAudio?.url === audioItem.url
 

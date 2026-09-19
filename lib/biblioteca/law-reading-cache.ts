@@ -5,7 +5,8 @@ const STORE_NAME = "law-readings"
 const DATABASE_VERSION = 1
 // Incrementar quando a estrutura remota de uma lei for ampliada e o cache
 // anterior puder não conter os novos títulos, capítulos ou seções.
-const CACHE_CONTENT_REVISION = "2026-08-26-02"
+// Rev 03 remove URLs públicas de áudio que foram gravadas em clientes antigos.
+const CACHE_CONTENT_REVISION = "2026-09-19-03"
 
 type CachedLawReading = {
   key: string
