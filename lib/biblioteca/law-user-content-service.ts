@@ -10,6 +10,7 @@ import {
 export {
   annotationColors,
   annotationTypes,
+  annotationTypeLabels,
   defaultAnnotationDetails,
   type AnnotationDetails,
   type LawAnnotation,

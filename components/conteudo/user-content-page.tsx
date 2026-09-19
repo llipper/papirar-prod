@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
 import { bibliotecaBooks } from "@/lib/biblioteca/catalog-data"
-import { archiveLawUserContent, deleteLawUserContent, loadLawUserContentOverview, restoreLawUserContent, type LawHighlightColor, type LawUserContentOverviewItem } from "@/lib/biblioteca/law-user-content-service"
+import { annotationTypeLabels, archiveLawUserContent, deleteLawUserContent, loadLawUserContentOverview, restoreLawUserContent, type LawHighlightColor, type LawUserContentOverviewItem } from "@/lib/biblioteca/law-user-content-service"
 import { AnnotationNoteContent } from "@/components/biblioteca/reading/annotations/annotation-note-content"
 
 type ContentPageMode = "annotations" | "highlights"
@@ -34,14 +34,6 @@ const colorStyles: Record<LawHighlightColor, string> = {
   orange: "bg-orange-100 text-orange-950",
   beige: "bg-amber-50 text-amber-950",
 }
-
-const annotationTypeLabels = {
-  general: "Geral",
-  question: "Dúvida",
-  important: "Importante",
-  summary: "Resumo",
-  review: "Revisar",
-} as const
 
 const annotationColorStyles = {
   yellow: "bg-amber-300",

@@ -12,16 +12,9 @@ import {
 import type {
   LawAnnotation,
   LawHighlight,
+  annotationTypeLabels,
 } from "@/lib/biblioteca/law-user-content-service"
 import { AnnotationNoteContent } from "./annotation-note-content"
-
-const annotationTypeLabels = {
-  general: "Geral",
-  question: "Dúvida",
-  important: "Importante",
-  summary: "Resumo",
-  review: "Revisar",
-} as const
 
 export function AnnotationText({
   text,

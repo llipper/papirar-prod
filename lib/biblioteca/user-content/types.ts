@@ -19,6 +19,14 @@ export const annotationTypes = [
 
 export type LawAnnotationType = (typeof annotationTypes)[number]
 
+export const annotationTypeLabels: Record<LawAnnotationType, string> = {
+  general: "Geral",
+  question: "Dúvida",
+  important: "Importante",
+  summary: "Resumo",
+  review: "Revisar",
+}
+
 export type AnnotationDetails = {
   color: LawAnnotationColor
   type: LawAnnotationType
