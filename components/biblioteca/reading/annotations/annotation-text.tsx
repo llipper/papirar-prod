@@ -9,11 +9,8 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
-import type {
-  LawAnnotation,
-  LawHighlight,
-  annotationTypeLabels,
-} from "@/lib/biblioteca/law-user-content-service"
+import { annotationTypeLabels } from "@/lib/biblioteca/law-user-content-service"
+import type { LawAnnotation, LawHighlight } from "@/lib/biblioteca/law-user-content-service"
 import { AnnotationNoteContent } from "./annotation-note-content"
 
 export function AnnotationText({
