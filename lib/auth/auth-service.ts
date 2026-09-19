@@ -39,8 +39,12 @@ export async function createAccount(name: string, email: string, password: strin
   try {
     const credential = await createUserWithEmailAndPassword(firebaseAuth, email, password)
     await updateProfile(credential.user, { displayName: name.trim() })
-    await requestAuthEmail("/auth/email-verification", await credential.user.getIdToken())
-    await firebaseAuth.signOut()
+    // A conta recém-criada deve permanecer autenticada para que o próximo
+    // redirecionamento para o dashboard não encontre uma sessão vazia.
+    // Falha no serviço de e-mail não desfaz um cadastro já concluído no Firebase.
+    void requestAuthEmail("/auth/email-verification", await credential.user.getIdToken()).catch((error) => {
+      console.warn("[Papirar][Auth] verification e-mail was not sent", error)
+    })
     return { error: null }
   } catch (error) {
     return { error }
