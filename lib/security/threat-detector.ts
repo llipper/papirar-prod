@@ -50,7 +50,9 @@ export const HONEYPOT_PATHS: RegExp[] = [
   /\/config\.yaml/i,
   /\/database\.yml/i,
   /\/settings\.py/i,
-  /\/admin/i,
+  // A isca é somente /admin. Não bloquear /dashboard/administracao,
+  // que é a área administrativa real do produto.
+  /^\/admin(?:\/|$)/i,
   /\/phpmyadmin/i,
   /\/pma\//i,
   /\/manager\/html/i,
