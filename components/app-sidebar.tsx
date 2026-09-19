@@ -18,6 +18,7 @@ import { sidebarNavigation } from "@/lib/dashboard/sidebar-navigation"
 import { ThemeLogo } from "@/components/brand/theme-logo"
 import { removeBrowserSession } from "@/lib/auth/browser-session"
 import { firebaseAuth } from "@/lib/firebase/client"
+import { SidebarPremiumItem } from "@/components/subscription/sidebar-premium-item"
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const router = useRouter()
@@ -76,6 +77,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarContent>
 
       <SidebarFooter>
+        <SidebarPremiumItem />
         <SidebarSeparator />
         <SidebarMenu>
           {footerNavigation.map((item) => {

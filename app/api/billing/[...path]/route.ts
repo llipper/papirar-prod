@@ -8,6 +8,7 @@ const workerUrl = "https://papirar-api.papirar-api-worker.workers.dev"
 const allowedPaths = new Set([
   "subscription",
   "entitlements",
+  "trial/redeem",
   "mercado-pago/checkout",
   "mercado-pago/cancel",
 ])

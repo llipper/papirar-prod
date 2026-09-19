@@ -7,6 +7,9 @@ export type SubscriptionOverview = {
   provider: "google_play" | "mercado_pago" | "manual" | null
   status: string | null
   cancelAtPeriodEnd: boolean
+  isTrial: boolean
+  canRedeemTrial: boolean
+  trialExpiresAt: string | null
 }
 
 async function authorizedRequest(path: string, init?: RequestInit) {
@@ -45,6 +48,12 @@ export async function getSubscriptionOverview() {
 
 export async function cancelMercadoPagoSubscription() {
   return await authorizedRequest("/mercado-pago/cancel", {
+    method: "POST",
+  }) as SubscriptionOverview
+}
+
+export async function redeemPremiumTrial() {
+  return await authorizedRequest("/trial/redeem", {
     method: "POST",
   }) as SubscriptionOverview
 }
