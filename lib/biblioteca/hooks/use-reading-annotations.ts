@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { firebaseAuth } from "@/lib/firebase/client"
 import type { LawReading } from "@/lib/biblioteca/reading-service"
 import {
@@ -251,7 +251,7 @@ export function useReadingAnnotations({
     }
   }
 
-  const updateAnnotation = async (annotationId: string, note: string) => {
+  const updateAnnotation = useCallback(async (annotationId: string, note: string) => {
     if (!note.trim()) return
     setIsSavingContent(true)
     try {
@@ -264,7 +264,7 @@ export function useReadingAnnotations({
     } finally {
       setIsSavingContent(false)
     }
-  }
+  }, [])
 
   const selectionHasHighlight = selection
     ? highlights.some(

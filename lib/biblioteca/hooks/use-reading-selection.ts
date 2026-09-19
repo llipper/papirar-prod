@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 
 export type TextSelection = {
   nodeKey: string
@@ -21,6 +21,15 @@ function closestElement(node: Node | null, selector: string): Element | null {
 
 export function useReadingSelection(isNoteOpen: boolean) {
   const [selection, setSelection] = useState<TextSelection | null>(null)
+  const selectionFrameRef = useRef<number | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (selectionFrameRef.current !== null) {
+        window.cancelAnimationFrame(selectionFrameRef.current)
+      }
+    }
+  }, [])
 
   useEffect(() => {
     if (!selection || isNoteOpen) return
@@ -48,8 +57,13 @@ export function useReadingSelection(isNoteOpen: boolean) {
     }
   }, [selection, isNoteOpen])
 
-  const handleTextSelection = (position?: { top: number; left: number }) => {
-    window.setTimeout(() => {
+  const handleTextSelection = useCallback((position?: { top: number; left: number }) => {
+    if (selectionFrameRef.current !== null) {
+      window.cancelAnimationFrame(selectionFrameRef.current)
+    }
+
+    selectionFrameRef.current = window.requestAnimationFrame(() => {
+      selectionFrameRef.current = null
       const browserSelection = window.getSelection()
       if (!browserSelection || browserSelection.rangeCount === 0) return
 
@@ -99,7 +113,7 @@ export function useReadingSelection(isNoteOpen: boolean) {
         Math.min(window.innerWidth - menuWidth - 12, preferredLeft)
       )
 
-      setSelection({
+      const nextSelection: TextSelection = {
         nodeKey: nodeRoot.getAttribute("data-node-key") ?? "",
         selectedText,
         startOffset: startRange.toString().length,
@@ -109,14 +123,33 @@ export function useReadingSelection(isNoteOpen: boolean) {
           12,
           Math.min(window.innerWidth - menuWidth - 12, preferredLeft)
         ),
-      })
-    }, 0)
-  }
+      }
 
-  const clearTextSelection = () => {
+      setSelection((current) => {
+        if (
+          current &&
+          current.nodeKey === nextSelection.nodeKey &&
+          current.selectedText === nextSelection.selectedText &&
+          current.startOffset === nextSelection.startOffset &&
+          current.endOffset === nextSelection.endOffset &&
+          current.top === nextSelection.top &&
+          current.left === nextSelection.left
+        ) {
+          return current
+        }
+        return nextSelection
+      })
+    })
+  }, [])
+
+  const clearTextSelection = useCallback(() => {
+    if (selectionFrameRef.current !== null) {
+      window.cancelAnimationFrame(selectionFrameRef.current)
+      selectionFrameRef.current = null
+    }
     window.getSelection()?.removeAllRanges()
     setSelection(null)
-  }
+  }, [])
 
   return {
     selection,

@@ -100,7 +100,7 @@ export function ReadingSelectionMenu({
   return (
     <div
       data-selection-menu
-      className="fixed z-50 flex w-[300px] flex-col rounded-2xl border border-border/80 bg-background/95 backdrop-blur-md p-2 shadow-2xl animate-in fade-in zoom-in-95 duration-150 select-none"
+      className="fixed z-50 flex w-[300px] flex-col rounded-2xl border border-border/80 bg-background/95 backdrop-blur-md p-2 shadow-2xl animate-in fade-in duration-100 select-none"
       style={{ top: selection.top, left: selection.left }}
       onMouseDown={(event) => event.preventDefault()}
       onWheel={(event) => {

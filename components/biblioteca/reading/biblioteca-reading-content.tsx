@@ -145,6 +145,7 @@ export function BibliotecaReadingContent({
           }
         }}
         onMouseUp={(event) => {
+          if (event.button !== 0) return
           if (window.getSelection()?.toString().trim()) {
             handleTextSelection({
               top: event.clientY,
