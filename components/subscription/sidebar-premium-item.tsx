@@ -49,19 +49,19 @@ export function SidebarPremiumItem() {
   }
 
   if (loading) {
-    return <SidebarMenu><SidebarMenuItem><SidebarMenuButton disabled className="h-auto min-h-20 rounded-2xl px-3 py-3"><LoaderCircle className="animate-spin" /><span>Carregando plano…</span></SidebarMenuButton></SidebarMenuItem></SidebarMenu>
+    return <SidebarMenu className="px-1"><SidebarMenuItem><SidebarMenuButton disabled className="h-auto min-h-[76px] rounded-2xl px-3 py-3"><LoaderCircle className="animate-spin" /><span>Carregando plano…</span></SidebarMenuButton></SidebarMenuItem></SidebarMenu>
   }
 
   if (subscription?.isPremium) {
     const until = dateLabel(subscription.expiresAt)
     return (
-      <SidebarMenu>
+      <SidebarMenu className="px-1">
         <SidebarMenuItem>
-          <SidebarMenuButton asChild tooltip="Gerenciar Papirar Premium" className="h-auto min-h-20 rounded-2xl border border-amber-100 bg-linear-to-br from-amber-50 to-white px-3 py-3 text-amber-950 shadow-sm hover:border-amber-200 hover:bg-amber-50 hover:text-amber-950 dark:border-amber-900/60 dark:from-amber-950/40 dark:to-sidebar-accent dark:text-amber-100 dark:hover:bg-amber-950/50">
+          <SidebarMenuButton asChild tooltip="Gerenciar Papirar Premium" className="h-auto min-h-[76px] gap-2.5 rounded-2xl border border-amber-200/80 bg-linear-to-br from-amber-50 to-amber-50/30 px-3 py-3 text-amber-950 shadow-sm hover:border-amber-300 hover:bg-amber-50 hover:text-amber-950 dark:border-amber-900/60 dark:from-amber-950/40 dark:to-sidebar-accent dark:text-amber-100 dark:hover:bg-amber-950/50">
             <Link href="/dashboard/assinatura">
-              <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/60 dark:text-amber-200"><Crown className="size-5" /></span>
-              <span className="flex min-w-0 flex-1 flex-col items-start leading-tight"><span className="font-semibold">Papirar Premium</span><span className="mt-1 text-xs text-muted-foreground">{subscription.isTrial ? `Teste até ${until ?? "o fim do período"}` : "Mais recursos para seus estudos."}</span></span>
-              <ChevronRight className="size-4 shrink-0" />
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/60 dark:text-amber-200"><Crown className="size-4" /></span>
+              <span className="flex min-w-0 flex-1 flex-col items-start whitespace-normal"><span className="w-full truncate text-[13px] font-semibold leading-4">Papirar Premium</span><span className="mt-0.5 line-clamp-2 w-full text-[11px] leading-[1.35] text-amber-900/65 dark:text-amber-100/65">{subscription.isTrial ? `Teste até ${until ?? "o fim do período"}` : "Mais recursos para seus estudos."}</span></span>
+              <ChevronRight className="size-3.5 shrink-0 text-amber-800/70 dark:text-amber-100/70" />
             </Link>
           </SidebarMenuButton>
         </SidebarMenuItem>
@@ -71,12 +71,12 @@ export function SidebarPremiumItem() {
 
   if (subscription?.canRedeemTrial) {
     return (
-      <SidebarMenu>
+      <SidebarMenu className="px-1">
         <SidebarMenuItem>
-          <SidebarMenuButton onClick={redeem} disabled={redeeming} tooltip="Resgatar 3 dias grátis" className="h-auto min-h-20 rounded-2xl border border-amber-100 bg-linear-to-br from-amber-50 to-white px-3 py-3 text-amber-950 shadow-sm hover:border-amber-200 hover:bg-amber-50 hover:text-amber-950 dark:border-amber-900/60 dark:from-amber-950/40 dark:to-sidebar-accent dark:text-amber-100 dark:hover:bg-amber-950/50">
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/60 dark:text-amber-200">{redeeming ? <LoaderCircle className="size-5 animate-spin" /> : <Gift className="size-5" />}</span>
-            <span className="flex min-w-0 flex-1 flex-col items-start leading-tight"><span className="font-semibold">Resgatar Premium</span><span className="mt-1 text-xs text-muted-foreground">3 dias grátis para estudar.</span></span>
-            <ChevronRight className="size-4 shrink-0" />
+          <SidebarMenuButton onClick={redeem} disabled={redeeming} tooltip="Resgatar 3 dias grátis" className="h-auto min-h-[76px] gap-2.5 rounded-2xl border border-amber-200/80 bg-linear-to-br from-amber-50 to-amber-50/30 px-3 py-3 text-amber-950 shadow-sm hover:border-amber-300 hover:bg-amber-50 hover:text-amber-950 dark:border-amber-900/60 dark:from-amber-950/40 dark:to-sidebar-accent dark:text-amber-100 dark:hover:bg-amber-950/50">
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/60 dark:text-amber-200">{redeeming ? <LoaderCircle className="size-4 animate-spin" /> : <Gift className="size-4" />}</span>
+            <span className="flex min-w-0 flex-1 flex-col items-start whitespace-normal"><span className="w-full truncate text-[13px] font-semibold leading-4">Resgatar Premium</span><span className="mt-0.5 line-clamp-2 w-full text-[11px] leading-[1.35] text-amber-900/65 dark:text-amber-100/65">3 dias grátis para estudar.</span></span>
+            <ChevronRight className="size-3.5 shrink-0 text-amber-800/70 dark:text-amber-100/70" />
           </SidebarMenuButton>
         </SidebarMenuItem>
       </SidebarMenu>
@@ -84,10 +84,10 @@ export function SidebarPremiumItem() {
   }
 
   return (
-    <SidebarMenu>
+    <SidebarMenu className="px-1">
       <SidebarMenuItem>
-        <SidebarMenuButton asChild tooltip="Assinar Papirar Premium" className="h-auto min-h-20 rounded-2xl border border-sidebar-border px-3 py-3 hover:bg-sidebar-accent">
-          <Link href="/dashboard/assinatura"><span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-muted text-foreground"><Crown className="size-5" /></span><span className="flex min-w-0 flex-1 flex-col items-start leading-tight"><span className="font-semibold">Papirar Premium</span><span className="mt-1 text-xs text-muted-foreground">Mais recursos para seus estudos.</span></span><ChevronRight className="size-4 shrink-0" /></Link>
+        <SidebarMenuButton asChild tooltip="Assinar Papirar Premium" className="h-auto min-h-[76px] gap-2.5 rounded-2xl border border-sidebar-border bg-sidebar-accent/30 px-3 py-3 hover:bg-sidebar-accent">
+          <Link href="/dashboard/assinatura"><span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-muted text-foreground"><Crown className="size-4" /></span><span className="flex min-w-0 flex-1 flex-col items-start whitespace-normal"><span className="w-full truncate text-[13px] font-semibold leading-4">Papirar Premium</span><span className="mt-0.5 line-clamp-2 w-full text-[11px] leading-[1.35] text-muted-foreground">Mais recursos para seus estudos.</span></span><ChevronRight className="size-3.5 shrink-0 text-muted-foreground" /></Link>
         </SidebarMenuButton>
       </SidebarMenuItem>
     </SidebarMenu>
