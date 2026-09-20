@@ -80,9 +80,17 @@ export function ReadingArticleNode({
     return (
       <section className="space-y-3 pt-4">
         <div className="space-y-2 text-center">
-          <h3 className="font-display text-base leading-tight font-semibold uppercase">
-            ARTIGO {node.number}
-          </h3>
+          <div className="flex items-center justify-center gap-1">
+            <h3 className="font-display text-base leading-tight font-semibold uppercase">
+              ARTIGO {node.number}
+            </h3>
+            {!node.text && node.audio && (
+              <ReadingAudioButton
+                audio={node.audio}
+                label={`Art. ${node.number}`}
+              />
+            )}
+          </div>
           {node.epigraphe && (
             <h4 className="font-display text-sm leading-tight font-semibold">
               {node.epigraphe}
@@ -114,6 +122,10 @@ export function ReadingArticleNode({
   const prefix =
     node.nodeType === "artigo"
       ? `Art. ${node.number}`
+      : node.nodeType === "treaty_item"
+        ? `${node.number}.`
+        : node.nodeType === "treaty_subitem"
+          ? `${node.number})`
       : node.nodeType === "paragrafo"
         ? node.number.toLowerCase() === "único"
           ? "Parágrafo único"
@@ -127,6 +139,8 @@ export function ReadingArticleNode({
   const hierarchyClass =
     {
       artigo: "",
+      treaty_item: "pl-4",
+      treaty_subitem: "pl-8",
       paragrafo:
         "relative border-l border-border pl-5 before:absolute before:top-7 before:-left-px before:w-4 before:rounded-full before:border-t before:border-border",
       inciso:

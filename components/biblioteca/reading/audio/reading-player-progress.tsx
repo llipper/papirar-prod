@@ -44,7 +44,8 @@ export function ReadingPlayerProgress({
         flex-1
         items-center
         gap-3
-        pr-[150px]
+        pr-[112px]
+        sm:pr-[150px]
         xl:pr-[190px]
       "
     >
@@ -127,7 +128,7 @@ export function ReadingPlayerProgress({
         {/* TÍTULO */}
         <span
           className="
-            max-w-[90px]
+            max-w-[58px]
             truncate
             text-[11px]
             font-medium

@@ -1,6 +1,8 @@
 import * as React from "react"
 
-const MOBILE_BREAKPOINT = 768
+// A navegação lateral fixa só cabe bem a partir do layout desktop. Tablets
+// usam o mesmo fluxo móvel, com a barra disponível sob demanda.
+const MOBILE_BREAKPOINT = 1280
 
 export function useIsMobile() {
   const [isMobile, setIsMobile] = React.useState<boolean | undefined>(undefined)

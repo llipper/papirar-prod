@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useState } from "react"
+import { X } from "lucide-react"
 import { useReadingAudio } from "@/lib/biblioteca/reading-audio-context"
 import { ReadingPlayerProgress } from "./reading-player-progress"
 import { ReadingPlayerControls } from "./reading-player-controls"
@@ -24,6 +25,7 @@ export function ReadingFloatingAudioPlayer() {
     setSpeed,
     setVolume,
     toggleMute,
+    closePlayer,
     nextAudio,
     playNext,
   } = useReadingAudio()
@@ -164,7 +166,7 @@ export function ReadingFloatingAudioPlayer() {
             flex
             shrink-0
             items-center
-            gap-3
+            gap-1.5
             sm:gap-4
           "
         >
@@ -183,6 +185,16 @@ export function ReadingFloatingAudioPlayer() {
             nextLabel={nextAudio?.label}
             onNext={nextAudio ? playNext : undefined}
           />
+
+          <button
+            type="button"
+            onClick={closePlayer}
+            className="flex size-8 shrink-0 items-center justify-center rounded-md text-white/55 transition-colors hover:bg-white/10 hover:text-white dark:text-black/55 dark:hover:bg-black/10 dark:hover:text-black"
+            aria-label="Parar e fechar player"
+            title="Parar e fechar"
+          >
+            <X className="size-4" />
+          </button>
         </div>
       </div>
     </footer>

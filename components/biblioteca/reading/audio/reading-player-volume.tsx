@@ -31,7 +31,7 @@ export function ReadingPlayerVolume({
         type="button"
         onClick={onCycleSpeed}
         className="
-          flex
+          hidden
           h-6
           min-w-7
           items-center
@@ -50,6 +50,7 @@ export function ReadingPlayerVolume({
           dark:text-black/65
           dark:hover:bg-black/10
           dark:hover:text-black
+          sm:flex
         "
         title="Alterar velocidade"
         aria-label={`Velocidade ${playbackRate}x`}

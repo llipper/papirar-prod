@@ -22,6 +22,7 @@ import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/s
 import { bibliotecaBooks } from "@/lib/biblioteca/catalog-data"
 import { annotationTypeLabels, archiveLawUserContent, deleteLawUserContent, loadLawUserContentOverview, restoreLawUserContent, type LawHighlightColor, type LawUserContentOverviewItem } from "@/lib/biblioteca/law-user-content-service"
 import { AnnotationNoteContent } from "@/components/biblioteca/reading/annotations/annotation-note-content"
+import { DashboardHeader } from "../dashboard-header"
 
 type ContentPageMode = "annotations" | "highlights"
 
@@ -132,32 +133,104 @@ export function UserContentPage({ mode }: { mode: ContentPageMode }) {
     <SidebarProvider>
       <AppSidebar />
       <SidebarInset className="min-w-0 overflow-hidden">
-        <header className="flex min-h-14 shrink-0 items-center justify-between gap-4 border-b px-4 py-1.5">
-          <div className="flex min-w-0 items-center gap-3">
-            <SidebarTrigger className="-ml-1" />
-            <div className="min-w-0">
-              <h1 className="font-heading text-base font-bold">{title}</h1>
-              <p className="truncate text-xs text-muted-foreground">{description}</p>
-            </div>
-          </div>
-          <div className="flex w-full max-w-xs items-center gap-2">
-            <div className="relative min-w-0 flex-1">
-              <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={`Buscar em ${title.toLocaleLowerCase()}`} className="h-9 rounded-lg pl-9" />
-            </div>
-            <Button
-              type="button"
-              variant={includeArchived ? "secondary" : "ghost"}
-              size="icon"
-              className="size-9 shrink-0 rounded-lg"
-              onClick={() => setIncludeArchived((value) => !value)}
-              aria-label={includeArchived ? "Ocultar arquivados" : "Mostrar arquivados"}
-              title={includeArchived ? "Ocultar arquivados" : "Mostrar arquivados"}
-            >
-              <Archive className="size-4" />
-            </Button>
-          </div>
-        </header>
+        <header className="shrink-0 border-b">
+  {/* =====================================================
+      MOBILE
+      Logo Papirar + notificações + avatar
+  ===================================================== */}
+  <div className="flex h-16 w-full items-center xl:hidden">
+    <DashboardHeader />
+  </div>
+
+  {/* =====================================================
+      DESKTOP
+      Mantém título + descrição + busca + arquivados
+  ===================================================== */}
+  <div className="hidden min-h-14 items-center justify-between gap-4 px-4 py-1.5 xl:flex">
+    <div className="flex min-w-0 items-center gap-3">
+      <SidebarTrigger className="-ml-1" />
+
+      <div className="min-w-0">
+        <h1 className="font-heading text-base font-bold">
+          {title}
+        </h1>
+
+        <p className="truncate text-xs text-muted-foreground">
+          {description}
+        </p>
+      </div>
+    </div>
+
+    <div className="flex w-full max-w-xs items-center gap-2">
+      <div className="relative min-w-0 flex-1">
+        <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+
+        <Input
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder={`Buscar em ${title.toLocaleLowerCase()}`}
+          className="h-9 rounded-lg pl-9"
+        />
+      </div>
+
+      <Button
+        type="button"
+        variant={includeArchived ? "secondary" : "ghost"}
+        size="icon"
+        className="size-9 shrink-0 rounded-lg"
+        onClick={() => setIncludeArchived((value) => !value)}
+        aria-label={
+          includeArchived
+            ? "Ocultar arquivados"
+            : "Mostrar arquivados"
+        }
+        title={
+          includeArchived
+            ? "Ocultar arquivados"
+            : "Mostrar arquivados"
+        }
+      >
+        <Archive className="size-4" />
+      </Button>
+    </div>
+  </div>
+</header>
+
+{/* =====================================================
+    MOBILE — ferramentas da página
+===================================================== */}
+<div className="flex items-center gap-2 border-b px-4 py-3 xl:hidden">
+  <div className="relative min-w-0 flex-1">
+    <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+
+    <Input
+      value={query}
+      onChange={(event) => setQuery(event.target.value)}
+      placeholder={`Buscar em ${title.toLocaleLowerCase()}`}
+      className="h-10 rounded-xl pl-9"
+    />
+  </div>
+
+  <Button
+    type="button"
+    variant={includeArchived ? "secondary" : "outline"}
+    size="icon"
+    className="size-10 shrink-0 rounded-xl"
+    onClick={() => setIncludeArchived((value) => !value)}
+    aria-label={
+      includeArchived
+        ? "Ocultar arquivados"
+        : "Mostrar arquivados"
+    }
+    title={
+      includeArchived
+        ? "Ocultar arquivados"
+        : "Mostrar arquivados"
+    }
+  >
+    <Archive className="size-4" />
+  </Button>
+</div>
         <main className="min-h-0 flex-1 overflow-y-auto">
           <div className="mx-auto w-full max-w-6xl px-4 py-5 lg:px-8">
             {isLoading ? (
@@ -204,16 +277,16 @@ export function UserContentPage({ mode }: { mode: ContentPageMode }) {
                               </div>
                             )}
                             <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-                            {book && (
-                              <Link
-                                href={item.nodeKey
-                                  ? `/dashboard/biblioteca/${book.id}?node=${encodeURIComponent(item.nodeKey)}`
-                                  : `/dashboard/biblioteca/${book.id}?text=${encodeURIComponent(item.selectedText)}`}
-                                className="inline-flex items-center text-[11px] font-semibold text-primary hover:underline"
-                              >
-                                Abrir no trecho <ArrowUpRight className="ml-1 size-3.5" />
-                              </Link>
-                            )}
+                              {book && (
+                                <Link
+                                  href={item.nodeKey
+                                    ? `/dashboard/biblioteca/${book.id}?node=${encodeURIComponent(item.nodeKey)}`
+                                    : `/dashboard/biblioteca/${book.id}?text=${encodeURIComponent(item.selectedText)}`}
+                                  className="inline-flex items-center text-[11px] font-semibold text-primary hover:underline"
+                                >
+                                  Abrir no trecho <ArrowUpRight className="ml-1 size-3.5" />
+                                </Link>
+                              )}
                               <div className="flex items-center gap-1">
                                 <Button
                                   type="button"

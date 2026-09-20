@@ -38,7 +38,7 @@ export function ReadingPlayerControls({
         className="
           group
           relative
-          hidden
+          flex
           size-8
           items-center
           justify-center
@@ -51,7 +51,6 @@ export function ReadingPlayerControls({
           hover:text-white
           dark:hover:bg-black/5
           dark:hover:text-black
-          sm:flex
         "
         aria-label="Voltar 10 segundos"
         title="Voltar 10 segundos"
@@ -126,7 +125,7 @@ export function ReadingPlayerControls({
         className="
           group
           relative
-          hidden
+          flex
           size-8
           items-center
           justify-center
@@ -139,7 +138,6 @@ export function ReadingPlayerControls({
           hover:text-white
           dark:hover:bg-black/5
           dark:hover:text-black
-          sm:flex
         "
         aria-label="Avançar 10 segundos"
         title="Avançar 10 segundos"

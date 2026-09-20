@@ -26,7 +26,7 @@ export function ReadingPlayerNext({
           shrink-0
           bg-white/15
           dark:bg-black/15
-          md:block
+          sm:block
         "
       />
 
@@ -36,9 +36,11 @@ export function ReadingPlayerNext({
         onClick={onNext}
         className="
           group
-          hidden
+          flex
+          size-8
           shrink-0
           items-center
+          justify-center
           gap-2
           rounded-md
           px-1
@@ -52,7 +54,7 @@ export function ReadingPlayerNext({
           hover:text-white
           dark:hover:bg-black/[0.05]
           dark:hover:text-black
-          md:flex
+          sm:size-auto
         "
         aria-label={`Próximo artigo: ${nextLabel}`}
         title={`Próximo: ${nextLabel}`}
@@ -60,21 +62,24 @@ export function ReadingPlayerNext({
         {/* ÍCONE */}
         <ListMusic
           className="
+            hidden
             size-[14px]
             shrink-0
             text-white/50
             dark:text-black/50
+            sm:block
           "
         />
 
         {/* TEXTO */}
         <div
           className="
-            flex
+            hidden
             min-w-[38px]
             flex-col
             items-start
             leading-none
+            sm:flex
           "
         >
           <span

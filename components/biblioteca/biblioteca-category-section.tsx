@@ -1,21 +1,43 @@
 "use client"
 
-import { ChevronLeft, ChevronRight } from "lucide-react"
-import { useRef } from "react"
-import type { PointerEvent } from "react"
+import {
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react"
+import {
+  useRef,
+  type PointerEvent,
+} from "react"
 
 import { Button } from "@/components/ui/button"
-import type { BibliotecaBook, BibliotecaCategory } from "@/lib/biblioteca/catalog-data"
-import { cn } from "@/lib/utils"
+import type {
+  BibliotecaBook,
+  BibliotecaCategory,
+} from "@/lib/biblioteca/catalog-data"
+
 import { BibliotecaBookCard } from "./biblioteca-book-card"
 
-const categoryColors: Record<BibliotecaCategory, string> = {
-  Constitucional: "bg-[#e5a858]",
-  Códigos: "bg-[#5ca7db]",
-  Estatutos: "bg-[#7fb875]",
-  Leis: "bg-[#d8a34f]",
-  "Direitos Humanos": "bg-[#a997cf]",
-  "Proteção de Dados": "bg-[#72b7b2]",
+const categoryDescriptions: Record<
+  BibliotecaCategory,
+  string
+> = {
+  Constitucional:
+    "Normas fundamentais e princípios que estruturam o Estado.",
+
+  Códigos:
+    "Legislação codificada por área do direito.",
+
+  Estatutos:
+    "Leis especiais organizadas por tema.",
+
+  Leis:
+    "Legislação especial para diferentes áreas jurídicas.",
+
+  "Direitos Humanos":
+    "Tratados e normas fundamentais de proteção à pessoa.",
+
+  "Proteção de Dados":
+    "Normas relacionadas à privacidade e proteção de dados.",
 }
 
 export function BibliotecaCategorySection({
@@ -26,6 +48,7 @@ export function BibliotecaCategorySection({
   books: BibliotecaBook[]
 }) {
   const scrollerRef = useRef<HTMLDivElement>(null)
+
   const dragRef = useRef({
     active: false,
     moved: false,
@@ -33,18 +56,38 @@ export function BibliotecaCategorySection({
     startScrollLeft: 0,
   })
 
-  const scroll = (direction: "left" | "right") => {
+  const isFeatured =
+    category === "Constitucional" && books.length === 1
+
+  /* =========================================================
+     SCROLL
+  ========================================================= */
+
+  const scroll = (
+    direction: "left" | "right"
+  ) => {
     scrollerRef.current?.scrollBy({
-      left: direction === "left" ? -440 : 440,
+      left: direction === "left" ? -500 : 500,
       behavior: "smooth",
     })
   }
 
-  const handlePointerDown = (event: PointerEvent<HTMLDivElement>) => {
-    // Only capture for mouse primary button drags
-    if (event.pointerType !== "mouse" || event.button !== 0) return
+  /* =========================================================
+     DRAG
+  ========================================================= */
+
+  const handlePointerDown = (
+    event: PointerEvent<HTMLDivElement>
+  ) => {
+    if (
+      event.pointerType !== "mouse" ||
+      event.button !== 0
+    ) {
+      return
+    }
 
     const scroller = scrollerRef.current
+
     if (!scroller) return
 
     dragRef.current = {
@@ -55,32 +98,59 @@ export function BibliotecaCategorySection({
     }
   }
 
-  const handlePointerMove = (event: PointerEvent<HTMLDivElement>) => {
-    if (event.pointerType !== "mouse" || !dragRef.current.active) return
+  const handlePointerMove = (
+    event: PointerEvent<HTMLDivElement>
+  ) => {
+    if (
+      event.pointerType !== "mouse" ||
+      !dragRef.current.active
+    ) {
+      return
+    }
+
     const scroller = scrollerRef.current
+
     if (!scroller) return
 
-    const distance = event.clientX - dragRef.current.startX
-    if (!dragRef.current.moved && Math.abs(distance) < 5) return
+    const distance =
+      event.clientX - dragRef.current.startX
+
+    if (
+      !dragRef.current.moved &&
+      Math.abs(distance) < 5
+    ) {
+      return
+    }
 
     if (!dragRef.current.moved) {
       dragRef.current.moved = true
+
       try {
         scroller.setPointerCapture(event.pointerId)
       } catch {}
     }
 
-    scroller.scrollLeft = dragRef.current.startScrollLeft - distance
+    scroller.scrollLeft =
+      dragRef.current.startScrollLeft - distance
   }
 
-  const stopDragging = (event: PointerEvent<HTMLDivElement>) => {
+  const stopDragging = (
+    event: PointerEvent<HTMLDivElement>
+  ) => {
     dragRef.current.active = false
-    if (scrollerRef.current?.hasPointerCapture(event.pointerId)) {
+
+    if (
+      scrollerRef.current?.hasPointerCapture(
+        event.pointerId
+      )
+    ) {
       try {
-        scrollerRef.current.releasePointerCapture(event.pointerId)
+        scrollerRef.current.releasePointerCapture(
+          event.pointerId
+        )
       } catch {}
     }
-    // Small timeout to prevent click event on link when dragged
+
     if (dragRef.current.moved) {
       setTimeout(() => {
         dragRef.current.moved = false
@@ -88,7 +158,9 @@ export function BibliotecaCategorySection({
     }
   }
 
-  const handleClickCapture = (event: React.MouseEvent) => {
+  const handleClickCapture = (
+    event: React.MouseEvent
+  ) => {
     if (dragRef.current.moved) {
       event.preventDefault()
       event.stopPropagation()
@@ -96,28 +168,80 @@ export function BibliotecaCategorySection({
   }
 
   return (
-    <section className="space-y-2" aria-labelledby={`biblioteca-${category}`}>
-      <div className="flex items-center justify-between gap-4 px-1">
-        <h2 id={`biblioteca-${category}`} className="font-heading text-xs font-bold text-foreground sm:text-sm">
-          {category}
-        </h2>
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] font-medium text-muted-foreground">
-            {books.length} {books.length === 1 ? "lei" : "leis"}
+    <section
+      aria-labelledby={`biblioteca-${category}`}
+    >
+      {/* =====================================================
+          CATEGORY HEADER
+      ===================================================== */}
+
+      <div className="mb-2 flex items-end justify-between gap-4">
+        <div>
+          <h2
+            id={`biblioteca-${category}`}
+            className="
+              font-heading
+              text-[15px]
+              font-black
+              tracking-tight
+              text-foreground
+            "
+          >
+            {category}
+          </h2>
+
+          <p
+            className="
+              mt-0.5
+              text-[10px]
+              text-muted-foreground
+            "
+          >
+            {categoryDescriptions[category]}
+          </p>
+        </div>
+
+        <div className="flex shrink-0 items-center gap-2">
+          <span
+            className="
+              mr-1
+              text-[10px]
+              font-medium
+              text-muted-foreground
+            "
+          >
+            {books.length}{" "}
+            {books.length === 1 ? "lei" : "leis"}
           </span>
+
           <Button
             variant="ghost"
-            size="icon-xs"
-            className="size-6 text-muted-foreground hover:text-foreground cursor-pointer"
+            size="icon"
+            className="
+              size-8
+              rounded-full
+              bg-muted/60
+              text-muted-foreground
+              hover:bg-muted
+              hover:text-foreground
+            "
             onClick={() => scroll("left")}
             aria-label={`Anterior em ${category}`}
           >
             <ChevronLeft className="size-4" />
           </Button>
+
           <Button
             variant="ghost"
-            size="icon-xs"
-            className="size-6 text-muted-foreground hover:text-foreground cursor-pointer"
+            size="icon"
+            className="
+              size-8
+              rounded-full
+              bg-muted/60
+              text-muted-foreground
+              hover:bg-muted
+              hover:text-foreground
+            "
             onClick={() => scroll("right")}
             aria-label={`Próximo em ${category}`}
           >
@@ -125,22 +249,22 @@ export function BibliotecaCategorySection({
           </Button>
         </div>
       </div>
-      <div className="relative h-[212px] min-w-0 max-w-full overflow-hidden sm:h-[233px]">
-        <div
-          className={cn(
-            "pointer-events-none absolute inset-x-0 bottom-2 z-10 h-14 rounded-[5px] border border-white/25 opacity-90 shadow-[0_4px_10px_rgba(0,0,0,0.16)] sm:h-16",
-            categoryColors[category]
-          )}
-        >
-          <span className="absolute left-2 top-1/2 size-2 -translate-y-1/2 rounded-full border border-black/10 bg-white/65 shadow-sm" />
-          <span className="absolute right-2 top-1/2 size-2 -translate-y-1/2 rounded-full border border-black/10 bg-white/65 shadow-sm" />
-          <span className="absolute bottom-1.5 left-1/2 flex -translate-x-1/2 items-center gap-1">
-            <span className="size-1 rounded-full bg-white/90" />
-            <span className="size-1 rounded-full bg-white/55" />
-            <span className="size-1 rounded-full bg-white/55" />
-            <span className="size-1 rounded-full bg-white/55" />
-          </span>
-        </div>
+
+      {/* =====================================================
+          FEATURED
+      ===================================================== */}
+
+      {isFeatured ? (
+        <BibliotecaBookCard
+          book={books[0]}
+          index={0}
+          featured
+        />
+      ) : (
+        /* ===================================================
+           CARROSSEL
+        =================================================== */
+
         <div
           ref={scrollerRef}
           onPointerDown={handlePointerDown}
@@ -149,13 +273,29 @@ export function BibliotecaCategorySection({
           onPointerCancel={stopDragging}
           onPointerLeave={stopDragging}
           onClickCapture={handleClickCapture}
-          className="relative z-0 flex h-full min-w-0 max-w-full cursor-grab select-none items-start gap-3 overflow-x-auto scroll-smooth px-3 pt-2 active:cursor-grabbing [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:gap-4 sm:px-4"
+          className="
+            flex
+            min-w-0
+            max-w-full
+            cursor-grab
+            select-none
+            gap-2
+            overflow-x-auto
+            scroll-smooth
+            active:cursor-grabbing
+            [scrollbar-width:none]
+            [&::-webkit-scrollbar]:hidden
+          "
         >
           {books.map((book, index) => (
-            <BibliotecaBookCard key={book.id} book={book} index={index} />
+            <BibliotecaBookCard
+              key={book.id}
+              book={book}
+              index={index}
+            />
           ))}
         </div>
-      </div>
+      )}
     </section>
   )
 }

@@ -53,20 +53,20 @@ export function ReadingDashboardHeader({
   const isDark = resolvedTheme === "dark"
 
   return (
-    <header className="flex h-16 shrink-0 items-center gap-3 border-b px-4">
-      <SidebarTrigger className="-ml-1" />
+    <header className="flex h-14 shrink-0 items-center gap-1 border-b px-2 sm:h-16 sm:gap-3 sm:px-4">
+      <SidebarTrigger className="-ml-1 hidden sm:inline-flex" />
       <Button
         asChild
         variant="ghost"
         size="icon"
-        className="text-black dark:text-white"
+        className="hidden min-[360px]:inline-flex text-black dark:text-white"
         aria-label="Voltar para a Biblioteca"
       >
         <Link href="/dashboard/biblioteca">
           <ChevronLeft />
         </Link>
       </Button>
-      <div className="min-w-0">
+      <div className="min-w-0 flex-1">
         <p className="truncate text-xs font-semibold text-muted-foreground">
           {reading?.acronym ?? "Biblioteca"}
         </p>
@@ -80,7 +80,7 @@ export function ReadingDashboardHeader({
             <Button
               variant="ghost"
               size="icon"
-              className="text-black dark:text-white"
+              className="hidden text-black min-[360px]:inline-flex dark:text-white"
               aria-label="Ajustar tamanho do texto"
               title="Tamanho do texto"
             >
@@ -111,7 +111,7 @@ export function ReadingDashboardHeader({
         <Button
           variant="ghost"
           size="icon"
-          className="text-black dark:text-white"
+          className="hidden text-black sm:inline-flex dark:text-white"
           onClick={() => setTheme(isDark ? "light" : "dark")}
           aria-label={isDark ? "Ativar modo claro" : "Ativar modo escuro"}
           title={isDark ? "Ativar modo claro" : "Ativar modo escuro"}
@@ -123,7 +123,7 @@ export function ReadingDashboardHeader({
           asChild
           variant="ghost"
           size="icon"
-          className="text-black dark:text-white"
+          className="hidden text-black min-[360px]:inline-flex dark:text-white"
           aria-label="Ver marcações"
           title="Marcações"
         >
@@ -144,7 +144,28 @@ export function ReadingDashboardHeader({
               <EllipsisVertical />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48">
+          <DropdownMenuContent align="end" className="w-52">
+            <DropdownMenuLabel className="sm:hidden">Leitura</DropdownMenuLabel>
+            <div className="sm:hidden">
+              {fontScaleOptions.map((option) => (
+                <DropdownMenuItem
+                  key={option.value}
+                  onSelect={() => onFontScaleChange?.(option.value)}
+                  className="cursor-pointer"
+                >
+                  <span className="flex-1 text-xs">Texto {option.label.toLowerCase()}</span>
+                  {fontScale === option.value ? <Check className="size-3.5 text-primary" /> : null}
+                </DropdownMenuItem>
+              ))}
+              <DropdownMenuItem
+                onSelect={() => setTheme(isDark ? "light" : "dark")}
+                className="cursor-pointer"
+              >
+                {isDark ? <Sun /> : <Moon />}
+                {isDark ? "Ativar modo claro" : "Ativar modo escuro"}
+              </DropdownMenuItem>
+            </div>
+            <DropdownMenuSeparator className="sm:hidden" />
             <DropdownMenuItem onSelect={onOpenIndex} className="cursor-pointer">
               <BookOpen />
               Abrir índice
@@ -161,7 +182,7 @@ export function ReadingDashboardHeader({
         <Button
           variant="ghost"
           size="icon"
-          className="text-black dark:text-white"
+          className="hidden text-black sm:inline-flex dark:text-white"
           onClick={onOpenIndex}
           aria-label="Abrir índice da lei"
           title="Índice"
