@@ -13,6 +13,16 @@ import { annotationTypeLabels } from "@/lib/biblioteca/law-user-content-service"
 import type { LawAnnotation, LawHighlight } from "@/lib/biblioteca/law-user-content-service"
 import { AnnotationNoteContent } from "./annotation-note-content"
 
+export const READING_ANNOTATION_VIEW_EVENT = "papirar:open-annotation-panel"
+
+export function openReadingAnnotationPanel(annotationId: string) {
+  window.dispatchEvent(
+    new CustomEvent<string>(READING_ANNOTATION_VIEW_EVENT, {
+      detail: annotationId,
+    })
+  )
+}
+
 export function AnnotationText({
   text,
   note,
@@ -29,10 +39,46 @@ export function AnnotationText({
   const [draft, setDraft] = useState(note)
   const [open, setOpen] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [editing, setEditing] = useState(false)
+  const [previewPosition, setPreviewPosition] = useState<{
+    top: number
+    left: number
+  } | null>(null)
+  const isLongNote = note.length > 220
+  const accentClass =
+    annotation.color === "red"
+      ? "bg-red-400"
+      : annotation.color === "blue"
+        ? "bg-blue-400"
+        : annotation.color === "green"
+          ? "bg-emerald-400"
+          : annotation.color === "purple"
+            ? "bg-purple-400"
+            : annotation.color === "gray"
+              ? "bg-slate-400"
+              : "bg-amber-400"
 
   const handleOpenChange = (nextOpen: boolean) => {
-    if (nextOpen) setDraft(note)
+    if (nextOpen) {
+      setDraft(note)
+      setEditing(false)
+    }
     setOpen(nextOpen)
+  }
+
+  const positionPreview = (target: HTMLElement) => {
+    const rect = target.getBoundingClientRect()
+    const width = 320
+    const gap = 14
+    const canShowRight = window.innerWidth - rect.right >= width + gap
+    const canShowLeft = rect.left >= width + gap
+    const left = canShowRight
+      ? rect.right + gap
+      : canShowLeft
+        ? rect.left - width - gap
+        : Math.max(12, Math.min(window.innerWidth - width - 12, rect.left))
+    const top = Math.max(12, Math.min(window.innerHeight - 180, rect.top - 10))
+    setPreviewPosition({ top, left })
   }
 
   const handleSave = async () => {
@@ -61,14 +107,13 @@ export function AnnotationText({
             } as CSSProperties
           }
           onMouseMove={(event) => {
-            event.currentTarget.style.setProperty(
-              "--annotation-x",
-              `${event.clientX}px`
-            )
-            event.currentTarget.style.setProperty(
-              "--annotation-y",
-              `${Math.max(96, event.clientY)}px`
-            )
+            if (!previewPosition) positionPreview(event.currentTarget)
+          }}
+          onMouseLeave={() => {
+            setPreviewPosition(null)
+          }}
+          onFocus={(event) => {
+            positionPreview(event.currentTarget)
           }}
           onKeyDown={(event) => {
             if (event.key === "Enter" || event.key === " ") {
@@ -80,19 +125,34 @@ export function AnnotationText({
           {text}
           {!open && (
             <span
-              className="pointer-events-none fixed z-40 hidden w-64 max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-[calc(100%+12px)] rounded-xl border bg-popover p-3 text-left font-sans text-xs leading-5 text-popover-foreground shadow-xl group-hover:block"
+              className="fixed z-40 hidden w-80 max-w-[calc(100vw-1.5rem)] rounded-xl border border-border/80 bg-popover p-3 text-left font-sans text-xs leading-5 text-popover-foreground shadow-lg group-hover:block group-focus:block"
               style={{
-                left: "var(--annotation-x)",
-                top: "var(--annotation-y)",
+                left: `${previewPosition?.left ?? -9999}px`,
+                top: `${previewPosition?.top ?? -9999}px`,
               }}
             >
-              <span className="mb-1 block text-[10px] font-bold tracking-[0.14em] text-muted-foreground uppercase">
-                Anotação
+              <span className="flex items-center gap-2">
+                <span className={`size-2 rounded-full ${accentClass}`} />
+                <span className="text-[11px] font-semibold text-foreground">Minha anotação</span>
               </span>
-              <AnnotationNoteContent note={note} />
-              <span className="mt-2 flex flex-wrap gap-1">
-                <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px]">{annotationTypeLabels[annotation.type]}</span>
-                {annotation.tags.map((tag) => <span key={tag} className="rounded-full bg-muted px-1.5 py-0.5 text-[10px]">#{tag}</span>)}
+              <span className={`mt-2 block text-foreground ${isLongNote ? "max-h-24 overflow-hidden" : ""}`}>
+                <AnnotationNoteContent note={note} />
+              </span>
+              <span className="mt-2 flex items-center justify-between gap-2">
+                <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">{annotationTypeLabels[annotation.type]}</span>
+                {isLongNote ? (
+                  <button
+                    type="button"
+                    className="text-[11px] font-semibold text-primary hover:underline"
+                    onClick={(event) => {
+                      event.preventDefault()
+                      event.stopPropagation()
+                      openReadingAnnotationPanel(annotation.id)
+                    }}
+                  >
+                    Ver completo
+                  </button>
+                ) : null}
               </span>
             </span>
           )}
@@ -103,45 +163,46 @@ export function AnnotationText({
         align="center"
         className="w-72 rounded-2xl p-3"
       >
-        <div className="space-y-2">
+        <div className="space-y-3">
           <div>
-            <p className="text-[10px] font-bold tracking-[0.14em] text-muted-foreground uppercase">
-              Anotação
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Clique para editar este lembrete.
-            </p>
+            <div className="flex items-center gap-2">
+              <span className={`size-2 rounded-full ${accentClass}`} />
+              <p className="text-sm font-semibold">Minha anotação</p>
+            </div>
             <div className="mt-2 flex flex-wrap gap-1 text-[10px] text-muted-foreground">
               <span className="rounded-full bg-muted px-1.5 py-0.5">{annotationTypeLabels[annotation.type]}</span>
               {annotation.tags.map((tag) => <span key={tag} className="rounded-full bg-muted px-1.5 py-0.5">#{tag}</span>)}
               {annotation.reminderAt && <span className="rounded-full bg-muted px-1.5 py-0.5">Lembrete: {new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(new Date(annotation.reminderAt))}</span>}
             </div>
           </div>
-          <Textarea
-            value={draft}
-            onChange={(event) => setDraft(event.target.value)}
-            maxLength={5000}
-            className="min-h-20 resize-none rounded-xl text-sm"
-            autoFocus
-          />
-          <div className="flex justify-end gap-2">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => setOpen(false)}
-            >
-              Cancelar
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              disabled={saving || !draft.trim()}
-              onClick={handleSave}
-            >
-              {saving ? "Salvando..." : "Salvar"}
-            </Button>
-          </div>
+          {editing ? (
+            <>
+              <Textarea
+                value={draft}
+                onChange={(event) => setDraft(event.target.value)}
+                maxLength={5000}
+                className="min-h-24 resize-none rounded-xl text-sm"
+                autoFocus
+              />
+              <div className="flex justify-end gap-2">
+                <Button type="button" variant="ghost" size="sm" onClick={() => setEditing(false)}>
+                  Cancelar
+                </Button>
+                <Button type="button" size="sm" disabled={saving || !draft.trim()} onClick={handleSave}>
+                  {saving ? "Salvando..." : "Salvar"}
+                </Button>
+              </div>
+            </>
+          ) : (
+            <>
+              <AnnotationNoteContent note={note} className="text-sm leading-6" />
+              <div className="flex justify-end">
+                <Button type="button" variant="outline" size="sm" onClick={() => setEditing(true)}>
+                  Editar anotação
+                </Button>
+              </div>
+            </>
+          )}
         </div>
       </PopoverContent>
     </Popover>

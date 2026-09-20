@@ -3,6 +3,7 @@
 import { HeaderSearch } from "./header-search"
 import { HeaderAccount } from "./header-account"
 import { HeaderNotifications } from "./header-notifications"
+import { HeaderThemeToggle } from "./header-theme-toggle"
 
 export function DashboardHeader() {
   return (
@@ -15,6 +16,9 @@ export function DashboardHeader() {
 
       {/* 3. Notificações */}
       <HeaderNotifications />
+
+      {/* 4. Aparência */}
+      <HeaderThemeToggle />
     </div>
   )
 }

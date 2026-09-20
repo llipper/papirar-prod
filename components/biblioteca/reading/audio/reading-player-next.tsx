@@ -4,14 +4,16 @@ import React from "react"
 import { ListMusic, ChevronRight } from "lucide-react"
 
 export interface ReadingPlayerNextProps {
-  nextLabel?: string
+  nextLabel?: string | null
   onNext?: () => void
 }
 
 export function ReadingPlayerNext({
-  nextLabel = "Art. 2º",
   onNext,
+  nextLabel,
 }: ReadingPlayerNextProps) {
+  if (!nextLabel || !onNext) return null
+
   return (
     <>
       {/* DIVISOR */}

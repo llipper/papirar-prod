@@ -70,6 +70,24 @@ const ANNOTATION_TYPES = [
   { id: "review", label: "Revisar", icon: RotateCcw },
 ] as const satisfies ReadonlyArray<{ id: LawAnnotationType; label: string; icon: typeof FileText }>
 
+type EditorFormatState = {
+  blockLabel: "Texto" | "Título" | "Subtítulo" | "Citação"
+  bold: boolean
+  italic: boolean
+  underline: boolean
+  unorderedList: boolean
+  orderedList: boolean
+}
+
+const defaultEditorFormatState: EditorFormatState = {
+  blockLabel: "Texto",
+  bold: false,
+  italic: false,
+  underline: false,
+  unorderedList: false,
+  orderedList: false,
+}
+
 function markdownFromNode(node: Node): string {
   if (node.nodeType === Node.TEXT_NODE) return node.textContent ?? ""
   if (node.nodeType !== Node.ELEMENT_NODE) return ""
@@ -120,6 +138,21 @@ function editorMarkdown(editor: HTMLElement): string {
     .trim()
 }
 
+function normalizeExternalUrl(value: string): string | null {
+  const raw = value.trim()
+  if (!raw) return null
+  const candidate = /^[a-z][a-z\d+.-]*:\/\//i.test(raw)
+    ? raw
+    : `https://${raw}`
+
+  try {
+    const url = new URL(candidate)
+    return url.protocol === "https:" || url.protocol === "http:" ? url.href : null
+  } catch {
+    return null
+  }
+}
+
 export function ReadingAnnotationDialog({
   open,
   onOpenChange,
@@ -138,6 +171,12 @@ export function ReadingAnnotationDialog({
   const [reminderDate, setReminderDate] = useState("")
   const [saveError, setSaveError] = useState<string | null>(null)
   const [noteLength, setNoteLength] = useState(0)
+  const [isLinkDialogOpen, setIsLinkDialogOpen] = useState(false)
+  const [linkUrl, setLinkUrl] = useState("")
+  const [linkError, setLinkError] = useState<string | null>(null)
+  const [formatState, setFormatState] = useState<EditorFormatState>(
+    defaultEditorFormatState
+  )
 
   const syncNoteLength = useCallback(() => {
     if (!editorRef.current) return ""
@@ -164,11 +203,60 @@ export function ReadingAnnotationDialog({
     selection?.addRange(range)
   }, [])
 
+  const syncFormatState = useCallback(() => {
+    const editor = editorRef.current
+    const selection = window.getSelection()
+    if (!editor || !selection?.rangeCount) return
+
+    const range = selection.getRangeAt(0)
+    if (!editor.contains(range.commonAncestorContainer)) return
+
+    let element =
+      range.startContainer.nodeType === Node.ELEMENT_NODE
+        ? (range.startContainer as HTMLElement)
+        : range.startContainer.parentElement
+    let blockLabel: EditorFormatState["blockLabel"] = "Texto"
+
+    while (element && element !== editor) {
+      if (element.tagName === "H3") {
+        blockLabel = "Título"
+        break
+      }
+      if (element.tagName === "H4") {
+        blockLabel = "Subtítulo"
+        break
+      }
+      if (element.tagName === "BLOCKQUOTE") {
+        blockLabel = "Citação"
+        break
+      }
+      element = element.parentElement
+    }
+
+    const nextState: EditorFormatState = {
+      blockLabel,
+      bold: document.queryCommandState("bold"),
+      italic: document.queryCommandState("italic"),
+      underline: document.queryCommandState("underline"),
+      unorderedList: document.queryCommandState("insertUnorderedList"),
+      orderedList: document.queryCommandState("insertOrderedList"),
+    }
+
+    setFormatState((current) =>
+      Object.entries(nextState).every(
+        ([key, value]) => current[key as keyof EditorFormatState] === value
+      )
+        ? current
+        : nextState
+    )
+  }, [])
+
   useEffect(() => {
     if (!open || !editorRef.current) return
     editorRef.current.replaceChildren()
     selectionRangeRef.current = null
     setNoteLength(0)
+    setFormatState(defaultEditorFormatState)
     window.requestAnimationFrame(() => editorRef.current?.focus())
   }, [open])
 
@@ -194,24 +282,57 @@ export function ReadingAnnotationDialog({
     restoreSelection()
     document.execCommand(command, false, value)
     rememberSelection()
+    syncFormatState()
     syncNoteLength()
   }
 
   const applyNormalText = () => {
     editorRef.current?.focus()
     restoreSelection()
-    document.execCommand("formatBlock", false, "p")
+    document.execCommand("formatBlock", false, "<p>")
     document.execCommand("removeFormat", false)
     rememberSelection()
+    syncFormatState()
     syncNoteLength()
   }
 
-  const insertLink = () => {
+  const toggleBlockQuote = () => {
+    editorRef.current?.focus()
+    restoreSelection()
+
+    const selection = window.getSelection()
+    const range = selection?.rangeCount ? selection.getRangeAt(0) : null
+    const startElement = range
+      ? range.startContainer.nodeType === Node.ELEMENT_NODE
+        ? (range.startContainer as HTMLElement)
+        : range.startContainer.parentElement
+      : null
+    const isQuote = Boolean(startElement?.closest("blockquote"))
+
+    document.execCommand("formatBlock", false, isQuote ? "<p>" : "<blockquote>")
+    rememberSelection()
+    syncFormatState()
+    syncNoteLength()
+  }
+
+  const openLinkDialog = () => {
     const selected = window.getSelection()?.toString().trim()
     if (!selected) return
-    const url = window.prompt("Cole o link completo (https://...)")?.trim()
-    if (!url || !/^https?:\/\//i.test(url)) return
+    rememberSelection()
+    setLinkUrl("")
+    setLinkError(null)
+    setIsLinkDialogOpen(true)
+  }
+
+  const insertLink = () => {
+    const url = normalizeExternalUrl(linkUrl)
+    if (!url) {
+      setLinkError("Digite um endereço de site válido.")
+      return
+    }
     applyCommand("createLink", url)
+    setIsLinkDialogOpen(false)
+    setLinkUrl("")
   }
 
   const handleAddTag = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -261,6 +382,7 @@ export function ReadingAnnotationDialog({
   }
 
   return (
+    <>
     <Dialog open={open} onOpenChange={(nextOpen) => nextOpen ? onOpenChange(true) : handleCancel()}>
       <DialogContent className="sm:max-w-4xl max-w-[95vw] p-6 rounded-2xl max-h-[92vh] overflow-y-auto">
         {/* CABEÇALHO */}
@@ -288,19 +410,19 @@ export function ReadingAnnotationDialog({
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="h-8 gap-1 px-2.5 text-xs font-medium text-foreground hover:bg-muted"
+                    className={`h-8 gap-1 px-2.5 text-xs font-medium ${formatState.blockLabel !== "Texto" ? "bg-foreground text-background hover:bg-foreground/90 hover:text-background" : "text-foreground hover:bg-muted"}`}
                   >
-                    Texto <ChevronDown className="size-3.5 opacity-60" />
+                    {formatState.blockLabel} <ChevronDown className="size-3.5 opacity-60" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start">
                   <DropdownMenuItem onClick={applyNormalText}>
                     Normal
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => applyCommand("formatBlock", "h3")}>
+                  <DropdownMenuItem onClick={() => applyCommand("formatBlock", "<h3>")}>
                     Título
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => applyCommand("formatBlock", "h4")}>
+                  <DropdownMenuItem onClick={() => applyCommand("formatBlock", "<h4>")}>
                     Subtítulo
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -312,7 +434,8 @@ export function ReadingAnnotationDialog({
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="size-7 rounded-md hover:bg-muted hover:text-foreground"
+                aria-pressed={formatState.bold}
+                className={`size-7 rounded-md ${formatState.bold ? "bg-foreground text-background hover:bg-foreground/90 hover:text-background" : "hover:bg-muted hover:text-foreground"}`}
                 onMouseDown={(event) => event.preventDefault()}
                 onClick={() => applyCommand("bold")}
                 title="Negrito"
@@ -324,7 +447,8 @@ export function ReadingAnnotationDialog({
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="size-7 rounded-md hover:bg-muted hover:text-foreground"
+                aria-pressed={formatState.italic}
+                className={`size-7 rounded-md ${formatState.italic ? "bg-foreground text-background hover:bg-foreground/90 hover:text-background" : "hover:bg-muted hover:text-foreground"}`}
                 onMouseDown={(event) => event.preventDefault()}
                 onClick={() => applyCommand("italic")}
                 title="Itálico"
@@ -336,7 +460,8 @@ export function ReadingAnnotationDialog({
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="size-7 rounded-md hover:bg-muted hover:text-foreground"
+                aria-pressed={formatState.underline}
+                className={`size-7 rounded-md ${formatState.underline ? "bg-foreground text-background hover:bg-foreground/90 hover:text-background" : "hover:bg-muted hover:text-foreground"}`}
                 onMouseDown={(event) => event.preventDefault()}
                 onClick={() => applyCommand("underline")}
                 title="Sublinhado"
@@ -350,7 +475,8 @@ export function ReadingAnnotationDialog({
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="size-7 rounded-md hover:bg-muted hover:text-foreground"
+                aria-pressed={formatState.unorderedList}
+                className={`size-7 rounded-md ${formatState.unorderedList ? "bg-foreground text-background hover:bg-foreground/90 hover:text-background" : "hover:bg-muted hover:text-foreground"}`}
                 onMouseDown={(event) => event.preventDefault()}
                 onClick={() => applyCommand("insertUnorderedList")}
                 title="Lista com marcadores"
@@ -362,7 +488,8 @@ export function ReadingAnnotationDialog({
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="size-7 rounded-md hover:bg-muted hover:text-foreground"
+                aria-pressed={formatState.orderedList}
+                className={`size-7 rounded-md ${formatState.orderedList ? "bg-foreground text-background hover:bg-foreground/90 hover:text-background" : "hover:bg-muted hover:text-foreground"}`}
                 onMouseDown={(event) => event.preventDefault()}
                 onClick={() => applyCommand("insertOrderedList")}
                 title="Lista numerada"
@@ -378,7 +505,7 @@ export function ReadingAnnotationDialog({
                 size="icon"
                 className="size-7 rounded-md hover:bg-muted hover:text-foreground"
                 onMouseDown={(event) => event.preventDefault()}
-                onClick={insertLink}
+                onClick={openLinkDialog}
                 title="Inserir link"
               >
                 <Link className="size-3.5" />
@@ -388,9 +515,10 @@ export function ReadingAnnotationDialog({
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="size-7 rounded-md hover:bg-muted hover:text-foreground"
+                aria-pressed={formatState.blockLabel === "Citação"}
+                className={`size-7 rounded-md ${formatState.blockLabel === "Citação" ? "bg-foreground text-background hover:bg-foreground/90 hover:text-background" : "hover:bg-muted hover:text-foreground"}`}
                 onMouseDown={(event) => event.preventDefault()}
-                onClick={() => applyCommand("formatBlock", "blockquote")}
+                onClick={toggleBlockQuote}
                 title="Citação"
               >
                 <Quote className="size-3.5" />
@@ -415,10 +543,18 @@ export function ReadingAnnotationDialog({
               }}
               onInput={() => {
                 rememberSelection()
+                syncFormatState()
                 syncNoteLength()
               }}
-              onKeyUp={rememberSelection}
-              onMouseUp={rememberSelection}
+              onKeyUp={() => {
+                rememberSelection()
+                syncFormatState()
+              }}
+              onMouseUp={() => {
+                rememberSelection()
+                syncFormatState()
+              }}
+              onFocus={syncFormatState}
               onPaste={(event) => {
                 event.preventDefault()
                 const available = Math.max(
@@ -432,7 +568,7 @@ export function ReadingAnnotationDialog({
                 rememberSelection()
                 syncNoteLength()
               }}
-              className="min-h-[260px] flex-1 whitespace-pre-wrap rounded-md p-1 font-reading text-base leading-relaxed outline-none empty:before:pointer-events-none empty:before:text-muted-foreground/60 empty:before:content-[attr(data-placeholder)]"
+              className="min-h-[260px] flex-1 whitespace-pre-wrap rounded-md p-1 font-reading text-base leading-relaxed outline-none empty:before:pointer-events-none empty:before:text-muted-foreground/60 empty:before:content-[attr(data-placeholder)] [&_a]:text-primary [&_a]:underline [&_a]:underline-offset-2 [&_blockquote]:my-2 [&_blockquote]:border-l-2 [&_blockquote]:border-primary/50 [&_blockquote]:pl-3 [&_blockquote]:italic [&_h3]:my-2 [&_h3]:text-xl [&_h3]:font-bold [&_h4]:my-2 [&_h4]:text-lg [&_h4]:font-semibold [&_ol]:my-2 [&_ol]:list-decimal [&_ol]:pl-6 [&_ul]:my-2 [&_ul]:list-disc [&_ul]:pl-6"
             />
 
             {/* RODAPÉ DO EDITOR */}
@@ -613,5 +749,53 @@ export function ReadingAnnotationDialog({
         </div>
       </DialogContent>
     </Dialog>
+    <Dialog
+      open={isLinkDialogOpen}
+      onOpenChange={(nextOpen) => {
+        setIsLinkDialogOpen(nextOpen)
+        if (!nextOpen) setLinkError(null)
+      }}
+    >
+      <DialogContent className="max-w-sm rounded-2xl p-5">
+        <DialogHeader className="space-y-1">
+          <DialogTitle className="text-base">Adicionar link</DialogTitle>
+          <p className="text-sm text-muted-foreground">
+            O texto selecionado será transformado em um link.
+          </p>
+        </DialogHeader>
+        <div className="space-y-2 pt-2">
+          <label htmlFor="annotation-link-url" className="text-xs font-medium">
+            URL do destino
+          </label>
+          <Input
+            id="annotation-link-url"
+            autoFocus
+            value={linkUrl}
+            onChange={(event) => {
+              setLinkUrl(event.target.value)
+              setLinkError(null)
+            }}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault()
+                insertLink()
+              }
+            }}
+            placeholder="exemplo.com"
+            inputMode="url"
+          />
+          {linkError ? <p role="alert" className="text-xs text-destructive">{linkError}</p> : null}
+        </div>
+        <div className="flex justify-end gap-2 pt-2">
+          <Button type="button" variant="outline" onClick={() => setIsLinkDialogOpen(false)}>
+            Cancelar
+          </Button>
+          <Button type="button" onClick={insertLink}>
+            Adicionar link
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+    </>
   )
 }

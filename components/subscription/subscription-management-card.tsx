@@ -9,6 +9,8 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { cancelMercadoPagoSubscription, getSubscriptionOverview, redeemPremiumTrial, type SubscriptionOverview } from "@/lib/subscription/subscription-service"
+import { firebaseAuth } from "@/lib/firebase/client"
+import { useAuthUser } from "@/lib/auth/use-auth-user"
 
 const benefits = [
   { icon: Headphones, title: "Áudios das leis", description: "Estude ouvindo explicações claras, onde estiver." },
@@ -33,6 +35,7 @@ function dateLabel(value: string | null) {
 }
 
 export function SubscriptionManagementCard({ compact = false }: { compact?: boolean }) {
+  const authUser = useAuthUser()
   const [subscription, setSubscription] = useState<SubscriptionOverview | null>(null)
   const [loading, setLoading] = useState(true)
   const [cancelling, setCancelling] = useState(false)
@@ -40,12 +43,31 @@ export function SubscriptionManagementCard({ compact = false }: { compact?: bool
   const [error, setError] = useState<string>()
 
   const load = useCallback(async () => {
+    const authUid = firebaseAuth.currentUser?.uid
     setLoading(true)
     setError(undefined)
-    try { setSubscription(await getSubscriptionOverview()) } catch (reason) { setError(reason instanceof Error ? reason.message : "Não foi possível carregar sua assinatura.") } finally { setLoading(false) }
+    setSubscription(null)
+    if (!authUid) {
+      setLoading(false)
+      return
+    }
+    try {
+      const nextSubscription = await getSubscriptionOverview()
+      if (firebaseAuth.currentUser?.uid === authUid) {
+        setSubscription(nextSubscription)
+      }
+    } catch (reason) {
+      if (firebaseAuth.currentUser?.uid === authUid) {
+        setError(reason instanceof Error ? reason.message : "Não foi possível carregar sua assinatura.")
+      }
+    } finally {
+      if (firebaseAuth.currentUser?.uid === authUid) {
+        setLoading(false)
+      }
+    }
   }, [])
 
-  useEffect(() => { void load() }, [load])
+  useEffect(() => { void load() }, [authUser?.uid, load])
 
   async function cancelRenewal() {
     setCancelling(true)

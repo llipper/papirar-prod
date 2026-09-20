@@ -6,7 +6,7 @@ const DATABASE_VERSION = 1
 // Incrementar quando a estrutura remota de uma lei for ampliada e o cache
 // anterior puder não conter os novos títulos, capítulos ou seções.
 // Rev 03 remove URLs públicas de áudio que foram gravadas em clientes antigos.
-const CACHE_CONTENT_REVISION = "2026-09-19-03"
+const CACHE_CONTENT_REVISION = "2026-09-19-04"
 
 type CachedLawReading = {
   key: string
@@ -15,6 +15,17 @@ type CachedLawReading = {
 }
 
 const memoryCache = new Map<string, CachedLawReading>()
+
+function withoutUserEntitlements(reading: LawReading): LawReading {
+  return {
+    ...reading,
+    nodes: reading.nodes.map((node) => ({ ...node, audio: undefined })),
+  }
+}
+
+function cacheSafeValue(value: CachedLawReading): CachedLawReading {
+  return { ...value, reading: withoutUserEntitlements(value.reading) }
+}
 
 export function createLawReadingCacheKey(lawId: string, version: string, scope: string) {
   return `${CACHE_CONTENT_REVISION}::${lawId}::${version}::${scope}`
@@ -39,7 +50,7 @@ function openDatabase(): Promise<IDBDatabase | null> {
 
 export async function readCachedLawReading(key: string) {
   const memoryValue = memoryCache.get(key)
-  if (memoryValue) return memoryValue
+  if (memoryValue) return cacheSafeValue(memoryValue)
 
   const database = await openDatabase()
   if (!database) return undefined
@@ -50,8 +61,9 @@ export async function readCachedLawReading(key: string) {
     request.onerror = () => resolve(undefined)
     request.onsuccess = () => {
       const value = request.result as CachedLawReading | undefined
-      if (value) memoryCache.set(key, value)
-      resolve(value)
+      const safeValue = value ? cacheSafeValue(value) : undefined
+      if (safeValue) memoryCache.set(key, safeValue)
+      resolve(safeValue)
     }
     transaction.oncomplete = () => database.close()
     transaction.onerror = () => database.close()
@@ -59,7 +71,12 @@ export async function readCachedLawReading(key: string) {
 }
 
 export async function writeCachedLawReading(key: string, reading: LawReading) {
-  const value: CachedLawReading = { key, savedAt: Date.now(), reading }
+  // Áudio e permissões são exclusivos da sessão. O IndexedDB só recebe texto legal.
+  const value: CachedLawReading = {
+    key,
+    savedAt: Date.now(),
+    reading: withoutUserEntitlements(reading),
+  }
   memoryCache.set(key, value)
 
   const database = await openDatabase()

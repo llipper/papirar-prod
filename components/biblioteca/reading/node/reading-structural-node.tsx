@@ -15,6 +15,7 @@ import {
 } from "./reading-node-utils"
 import { renderMarkedText } from "../annotations/annotation-text"
 import { ReadingAudioButton } from "../audio/reading-audio-button"
+import type { ReadingFontScale } from "../reading-dashboard-header"
 
 export interface ReadingStructuralNodeProps {
   node: ReadingNode
@@ -22,6 +23,7 @@ export interface ReadingStructuralNodeProps {
   highlights: LawHighlight[]
   annotations: LawAnnotation[]
   onAnnotationUpdated: (annotationId: string, note: string) => Promise<void>
+  fontScale: ReadingFontScale
 }
 
 export function ReadingStructuralNode({
@@ -30,8 +32,14 @@ export function ReadingStructuralNode({
   highlights,
   annotations,
   onAnnotationUpdated,
+  fontScale,
 }: ReadingStructuralNodeProps) {
   const content = structuralContent(node, readingPresentation)
+  const descriptionTextSize = {
+    compact: "text-[0.85rem]",
+    default: structuralTextSize[node.nodeType] ?? "text-sm",
+    comfortable: "text-base",
+  }[fontScale]
 
   return (
     <section
@@ -53,7 +61,7 @@ export function ReadingStructuralNode({
       )}
       {content.description && (
         <p
-          className={`font-display leading-tight font-semibold ${structuralTextSize[node.nodeType] ?? "text-sm"}`}
+          className={`font-display leading-tight font-semibold ${descriptionTextSize}`}
         >
           <span data-node-text>
             {renderMarkedText(

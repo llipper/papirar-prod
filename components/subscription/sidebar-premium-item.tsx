@@ -28,11 +28,25 @@ export function SidebarPremiumItem() {
         setLoading(false)
         return
       }
+      const authUid = user.uid
       setLoading(true)
+      setSubscription(null)
       void getSubscriptionOverview()
-        .then(setSubscription)
-        .catch(() => setSubscription(null))
-        .finally(() => setLoading(false))
+        .then((nextSubscription) => {
+          if (firebaseAuth.currentUser?.uid === authUid) {
+            setSubscription(nextSubscription)
+          }
+        })
+        .catch(() => {
+          if (firebaseAuth.currentUser?.uid === authUid) {
+            setSubscription(null)
+          }
+        })
+        .finally(() => {
+          if (firebaseAuth.currentUser?.uid === authUid) {
+            setLoading(false)
+          }
+        })
     })
   }, [])
 

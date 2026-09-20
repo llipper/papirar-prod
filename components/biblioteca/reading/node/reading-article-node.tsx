@@ -10,6 +10,7 @@ import type {
 import { isTreatyBodyNode } from "./reading-node-utils"
 import { renderMarkedText } from "../annotations/annotation-text"
 import { ReadingAudioButton } from "../audio/reading-audio-button"
+import type { ReadingFontScale } from "../reading-dashboard-header"
 
 export interface ReadingArticleNodeProps {
   node: ReadingNode
@@ -17,6 +18,7 @@ export interface ReadingArticleNodeProps {
   highlights: LawHighlight[]
   annotations: LawAnnotation[]
   onAnnotationUpdated: (annotationId: string, note: string) => Promise<void>
+  fontScale: ReadingFontScale
 }
 
 export function ReadingArticleNode({
@@ -25,7 +27,14 @@ export function ReadingArticleNode({
   highlights,
   annotations,
   onAnnotationUpdated,
+  fontScale,
 }: ReadingArticleNodeProps) {
+  const bodyTextSize = {
+    compact: "text-[0.96rem]",
+    default: "text-[1.05rem]",
+    comfortable: "text-[1.18rem]",
+  }[fontScale]
+
   if (node.nodeType === "preambulo") {
     return (
       <section className="space-y-3 py-3 text-center">
@@ -46,7 +55,7 @@ export function ReadingArticleNode({
           </h4>
         )}
         {node.text && (
-          <p className="text-left font-reading text-[1.05rem] leading-[1.65]">
+          <p className={`text-left font-reading ${bodyTextSize} leading-[1.65]`}>
             <span data-node-text className="whitespace-pre-line">
               {renderMarkedText(
                 node.text,
@@ -81,7 +90,7 @@ export function ReadingArticleNode({
           )}
         </div>
         {node.text && (
-          <p className="font-reading text-[1.05rem] leading-[1.65] text-foreground/85">
+          <p className={`font-reading ${bodyTextSize} leading-[1.65] text-foreground/85`}>
             {node.audio && (
               <ReadingAudioButton
                 audio={node.audio}
@@ -153,7 +162,7 @@ export function ReadingArticleNode({
           {node.epigraphe}
         </h4>
       )}
-      <p className="font-reading text-[1.05rem] leading-[1.65] text-foreground/85">
+      <p className={`font-reading ${bodyTextSize} leading-[1.65] text-foreground/85`}>
         <strong className="font-reading font-semibold text-foreground">
           {prefix}
         </strong>

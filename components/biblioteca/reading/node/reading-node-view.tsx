@@ -9,6 +9,7 @@ import type {
 } from "@/lib/biblioteca/law-user-content-service"
 import { ReadingStructuralNode } from "./reading-structural-node"
 import { ReadingArticleNode } from "./reading-article-node"
+import type { ReadingFontScale } from "../reading-dashboard-header"
 
 export interface ReadingNodeViewProps {
   node: ReadingNode
@@ -16,6 +17,7 @@ export interface ReadingNodeViewProps {
   highlights: LawHighlight[]
   annotations: LawAnnotation[]
   onAnnotationUpdated: (annotationId: string, note: string) => Promise<void>
+  fontScale: ReadingFontScale
 }
 
 function ReadingNodeViewComponent({
@@ -24,6 +26,7 @@ function ReadingNodeViewComponent({
   highlights,
   annotations,
   onAnnotationUpdated,
+  fontScale,
 }: ReadingNodeViewProps) {
   const isStructural = [
     "parte",
@@ -41,6 +44,7 @@ function ReadingNodeViewComponent({
         highlights={highlights}
         annotations={annotations}
         onAnnotationUpdated={onAnnotationUpdated}
+        fontScale={fontScale}
       />
     )
   }
@@ -52,6 +56,7 @@ function ReadingNodeViewComponent({
       highlights={highlights}
       annotations={annotations}
       onAnnotationUpdated={onAnnotationUpdated}
+      fontScale={fontScale}
     />
   )
 }

@@ -7,15 +7,9 @@ import { ReadingPlayerControls } from "./reading-player-controls"
 import { ReadingPlayerVolume } from "./reading-player-volume"
 import { ReadingPlayerNext } from "./reading-player-next"
 
-export interface ReadingFloatingAudioPlayerProps {
-  nextLabel?: string
-  onNext?: () => void
-}
+export interface ReadingFloatingAudioPlayerProps {}
 
-export function ReadingFloatingAudioPlayer({
-  nextLabel = "Art. 2º",
-  onNext,
-}: ReadingFloatingAudioPlayerProps) {
+export function ReadingFloatingAudioPlayer() {
   const {
     currentAudio,
     currentLabel,
@@ -30,6 +24,8 @@ export function ReadingFloatingAudioPlayer({
     setSpeed,
     setVolume,
     toggleMute,
+    nextAudio,
+    playNext,
   } = useReadingAudio()
 
   const [isSeeking, setIsSeeking] = useState(false)
@@ -184,8 +180,8 @@ export function ReadingFloatingAudioPlayer({
 
           {/* BLOCO 4: PRÓXIMO ARTIGO */}
           <ReadingPlayerNext
-            nextLabel={nextLabel}
-            onNext={onNext}
+            nextLabel={nextAudio?.label}
+            onNext={nextAudio ? playNext : undefined}
           />
         </div>
       </div>

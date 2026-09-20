@@ -11,6 +11,12 @@ import React, {
 } from "react"
 import { type ReadingAudio } from "./reading-service"
 
+export type ReadingAudioQueueItem = {
+  audio: ReadingAudio
+  label: string
+  sortOrder: number
+}
+
 type ReadingAudioContextType = {
   currentAudio: ReadingAudio | null
   currentLabel: string | null
@@ -28,11 +34,19 @@ type ReadingAudioContextType = {
   setVolume: (vol: number) => void
   toggleMute: () => void
   closePlayer: () => void
+  nextAudio: ReadingAudioQueueItem | null
+  playNext: () => Promise<void>
 }
 
 const ReadingAudioContext = createContext<ReadingAudioContextType | null>(null)
 
-export function ReadingAudioProvider({ children }: { children: ReactNode }) {
+export function ReadingAudioProvider({
+  children,
+  audioQueue = [],
+}: {
+  children: ReactNode
+  audioQueue?: ReadingAudioQueueItem[]
+}) {
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const [currentAudio, setCurrentAudio] = useState<ReadingAudio | null>(null)
   const [currentLabel, setCurrentLabel] = useState<string | null>(null)
@@ -42,6 +56,32 @@ export function ReadingAudioProvider({ children }: { children: ReactNode }) {
   const [playbackRate, setPlaybackRate] = useState(1)
   const [volume, setVolumeState] = useState(1)
   const [isMuted, setIsMuted] = useState(false)
+  const currentAudioRef = useRef<ReadingAudio | null>(null)
+  const playAudioRef = useRef<
+    ((audio: ReadingAudio, label?: string) => Promise<void>) | null
+  >(null)
+
+  const orderedQueue = React.useMemo(
+    () => [...audioQueue].sort((a, b) => a.sortOrder - b.sortOrder),
+    [audioQueue]
+  )
+
+  const getNextAudio = useCallback(
+    (audio: ReadingAudio | null) => {
+      if (!audio) return null
+
+      const currentIndex = orderedQueue.findIndex(
+        (item) => item.audio.key === audio.key && item.audio.url === audio.url
+      )
+
+      return currentIndex >= 0 ? orderedQueue[currentIndex + 1] ?? null : null
+    },
+    [orderedQueue]
+  )
+
+  useEffect(() => {
+    currentAudioRef.current = currentAudio
+  }, [currentAudio])
 
   // Inicializa o elemento de áudio central
   useEffect(() => {
@@ -54,6 +94,12 @@ export function ReadingAudioProvider({ children }: { children: ReactNode }) {
     const onEnded = () => {
       setIsPlaying(false)
       setCurrentTime(0)
+      const nextItem = getNextAudio(currentAudioRef.current)
+      if (nextItem) {
+        void playAudioRef.current?.(nextItem.audio, nextItem.label)
+        return
+      }
+
       setCurrentAudio(null)
       setCurrentLabel(null)
     }
@@ -85,7 +131,7 @@ export function ReadingAudioProvider({ children }: { children: ReactNode }) {
       audio.pause()
       audio.src = ""
     }
-  }, [])
+  }, [getNextAudio])
 
   const playAudio = useCallback(async (audioItem: ReadingAudio, label?: string) => {
     const audioEl = audioRef.current
@@ -115,6 +161,10 @@ export function ReadingAudioProvider({ children }: { children: ReactNode }) {
       setIsPlaying(false)
     }
   }, [currentAudio, playbackRate, volume, isMuted])
+
+  useEffect(() => {
+    playAudioRef.current = playAudio
+  }, [playAudio])
 
   const pauseAudio = useCallback(() => {
     const audioEl = audioRef.current
@@ -180,6 +230,13 @@ export function ReadingAudioProvider({ children }: { children: ReactNode }) {
     setCurrentTime(0)
   }, [])
 
+  const nextAudio = getNextAudio(currentAudio)
+  const playNext = useCallback(async () => {
+    const nextItem = getNextAudio(currentAudio)
+    if (!nextItem) return
+    await playAudio(nextItem.audio, nextItem.label)
+  }, [currentAudio, getNextAudio, playAudio])
+
   return (
     <ReadingAudioContext.Provider
       value={{
@@ -199,6 +256,8 @@ export function ReadingAudioProvider({ children }: { children: ReactNode }) {
         setVolume,
         toggleMute,
         closePlayer,
+        nextAudio,
+        playNext,
       }}
     >
       {children}

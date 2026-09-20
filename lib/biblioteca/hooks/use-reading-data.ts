@@ -9,7 +9,9 @@ import {
   LAW_READING_UPDATED_EVENT,
   loadLawReading,
   type LawReading,
+  type LawReadingUpdate,
 } from "@/lib/biblioteca/reading-service"
+import { useAuthUser } from "@/lib/auth/use-auth-user"
 
 export interface UseReadingDataProps {
   bookId: string
@@ -36,6 +38,8 @@ export function useReadingData({
   )
   const [reading, setReading] = useState<LawReading | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const authUser = useAuthUser()
+  const authUid = authUser?.uid ?? null
 
   useEffect(() => {
     let cancelled = false
@@ -50,11 +54,16 @@ export function useReadingData({
     setError(null)
 
     const handleBackgroundUpdate = (event: Event) => {
-      const updatedReading = (event as CustomEvent<LawReading>).detail
-      if (!updatedReading || updatedReading.lawId !== book.lawId || cancelled) {
+      const update = (event as CustomEvent<LawReadingUpdate>).detail
+      if (
+        !update ||
+        update.authUid !== authUid ||
+        update.reading.lawId !== book.lawId ||
+        cancelled
+      ) {
         return
       }
-      setReading(updatedReading)
+      setReading(update.reading)
     }
 
     window.addEventListener(LAW_READING_UPDATED_EVENT, handleBackgroundUpdate)
@@ -107,7 +116,7 @@ export function useReadingData({
         handleBackgroundUpdate
       )
     }
-  }, [book, initialNodeKey, initialSelectedText])
+  }, [authUid, book, initialNodeKey, initialSelectedText])
 
   return {
     book,

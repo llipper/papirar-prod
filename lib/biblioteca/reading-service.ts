@@ -66,9 +66,16 @@ async function firestoreRows<T>(name: string, field: string, value: string): Pro
 }
 
 export const LAW_READING_UPDATED_EVENT = "papirar:law-reading-updated"
-const LAW_READING_REVALIDATION_MS = 15 * 60 * 1000
 
-async function loadLawReadingFromRemote(book: BibliotecaBook): Promise<LawReading> {
+export type LawReadingUpdate = {
+  reading: LawReading
+  authUid: string | null
+}
+
+async function loadLawReadingFromRemote(
+  book: BibliotecaBook,
+  authToken: string | null
+): Promise<LawReading> {
   console.info(`${READING_LOG_PREFIX} iniciando leitura`, {
     bookId: book.id,
     title: book.title,
@@ -92,8 +99,10 @@ async function loadLawReadingFromRemote(book: BibliotecaBook): Promise<LawReadin
   const catalogVersion = book.version
   const catalogScope = book.scope
   if (!catalogLawId || !catalogVersion || !catalogScope) throw new Error("Metadados da lei incompletos.")
-  const token = getAuth().currentUser ? await getAuth().currentUser!.getIdToken() : null
-  const response = await fetch(`${process.env.NEXT_PUBLIC_CLOUDFLARE_API_URL ?? "https://papirar-api.papirar-api-worker.workers.dev"}/catalog/reading?lawId=${encodeURIComponent(catalogLawId)}&version=${encodeURIComponent(catalogVersion)}&scope=${encodeURIComponent(catalogScope)}`, { headers: token ? { Authorization: `Bearer ${token}` } : undefined })
+  const response = await fetch(`${process.env.NEXT_PUBLIC_CLOUDFLARE_API_URL ?? "https://papirar-api.papirar-api-worker.workers.dev"}/catalog/reading?lawId=${encodeURIComponent(catalogLawId)}&version=${encodeURIComponent(catalogVersion)}&scope=${encodeURIComponent(catalogScope)}`, {
+    cache: "no-store",
+    headers: authToken ? { Authorization: `Bearer ${authToken}` } : undefined,
+  })
   if (!response.ok) throw new Error("Não foi possível carregar o conteúdo da lei.")
   const catalog = await response.json() as { law: { id: string; title: string; acronym: string }; version: { id: string }; nodes: Array<{ node_key: string; node_type: string; number?: string; label?: string }>; contents: Array<{ node_key: string; epigraphe?: string; text_content?: string; sort_order: number }>; audios: Array<{ node_key?: string; audio_key: string; title: string; public_url: string; duration_ms?: number | null }> }
   const catalogNodeByKey = new Map(catalog.nodes.map((node) => [node.node_key, node]))
@@ -231,9 +240,53 @@ async function loadLawReadingFromRemote(book: BibliotecaBook): Promise<LawReadin
   return { lawId: book.lawId!, versionId, title: book.title, acronym: book.acronym, nodes, annexes }
 }
 
+async function loadReadingForCurrentUser(book: BibliotecaBook): Promise<LawReadingUpdate> {
+  const auth = getAuth()
+  const user = auth.currentUser
+  const authUid = user?.uid ?? null
+  const authToken = user ? await user.getIdToken() : null
+
+  if ((auth.currentUser?.uid ?? null) !== authUid) {
+    throw new Error("A sessão mudou durante o carregamento da leitura.")
+  }
+
+  const reading = await loadLawReadingFromRemote(book, authToken)
+
+  if ((auth.currentUser?.uid ?? null) !== authUid) {
+    throw new Error("A sessão mudou durante o carregamento da leitura.")
+  }
+
+  return { reading, authUid }
+}
+
+function revalidateCachedReading(
+  book: BibliotecaBook,
+  cacheKey: string,
+  expectedAuthUid: string | null
+) {
+  void loadReadingForCurrentUser(book)
+    .then(async ({ reading, authUid }) => {
+      if (authUid !== expectedAuthUid) return
+      await writeCachedLawReading(cacheKey, reading)
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent<LawReadingUpdate>(LAW_READING_UPDATED_EVENT, {
+            detail: { reading, authUid },
+          })
+        )
+      }
+    })
+    .catch((reason: unknown) => {
+      console.warn(`${READING_LOG_PREFIX} atualização em segundo plano indisponível`, {
+        lawId: book.lawId,
+        reason,
+      })
+    })
+}
+
 export async function loadLawReading(book: BibliotecaBook): Promise<LawReading> {
   if (!book.lawId || !book.version || !book.scope) {
-    return loadLawReadingFromRemote(book)
+    return (await loadReadingForCurrentUser(book)).reading
   }
 
   const cacheKey = createLawReadingCacheKey(book.lawId, book.version, book.scope)
@@ -246,37 +299,23 @@ export async function loadLawReading(book: BibliotecaBook): Promise<LawReading> 
       ageMs: Date.now() - cached.savedAt,
     })
 
-    if (Date.now() - cached.savedAt < LAW_READING_REVALIDATION_MS) {
-      return cached.reading
-    }
-
-    void loadLawReadingFromRemote(book)
-      .then(async (freshReading) => {
-        await writeCachedLawReading(cacheKey, freshReading)
-        if (typeof window !== "undefined") {
-          window.dispatchEvent(
-            new CustomEvent<LawReading>(LAW_READING_UPDATED_EVENT, {
-              detail: freshReading,
-            })
-          )
-        }
-      })
-      .catch((reason: unknown) => {
-        console.warn(`${READING_LOG_PREFIX} atualização em segundo plano indisponível`, {
-          lawId: book.lawId,
-          reason,
-        })
-      })
+    // O texto aparece instantaneamente; os recursos Premium são sempre
+    // revalidados para a sessão atual e nunca vêm do armazenamento local.
+    revalidateCachedReading(
+      book,
+      cacheKey,
+      getAuth().currentUser?.uid ?? null
+    )
 
     return cached.reading
   }
 
-  const freshReading = await loadLawReadingFromRemote(book)
-  await writeCachedLawReading(cacheKey, freshReading)
+  const fresh = await loadReadingForCurrentUser(book)
+  await writeCachedLawReading(cacheKey, fresh.reading)
   console.info(`${READING_LOG_PREFIX} leitura salva no cache local`, {
     lawId: book.lawId,
-    versionId: freshReading.versionId,
-    nodes: freshReading.nodes.length,
+    versionId: fresh.reading.versionId,
+    nodes: fresh.reading.nodes.length,
   })
-  return freshReading
+  return fresh.reading
 }

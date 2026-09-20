@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useMemo, useRef, useState, type ReactNode } from "react"
+import React, { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import Link from "next/link"
 import { LoaderCircle, RotateCcw } from "lucide-react"
 
@@ -12,12 +12,18 @@ import { useReadingSelection } from "@/lib/biblioteca/hooks/use-reading-selectio
 import { useReadingAnnotations } from "@/lib/biblioteca/hooks/use-reading-annotations"
 
 import { ReadingDashboardLayout } from "./reading-dashboard-layout"
+import type { ReadingFontScale } from "./reading-dashboard-header"
+import type { ReadingAudioQueueItem } from "@/lib/biblioteca/reading-audio-context"
 import { articleHeading } from "./node/reading-node-utils"
 import { ReadingNodeView } from "./node/reading-node-view"
 import { ReadingAnnexView } from "./node/reading-annex-view"
 import { ReadingIndexSheet } from "./index/reading-index-sheet"
 import { ReadingSelectionMenu } from "./annotations/reading-selection-menu"
 import { ReadingAnnotationDialog } from "./annotations/reading-annotation-dialog"
+import {
+  READING_ANNOTATION_VIEW_EVENT,
+} from "./annotations/annotation-text"
+import { ReadingAnnotationsPanel } from "./annotations/reading-annotations-panel"
 
 export interface BibliotecaReadingContentProps {
   bookId: string
@@ -41,6 +47,9 @@ export function BibliotecaReadingContent({
   })
 
   const [isIndexOpen, setIsIndexOpen] = useState(false)
+  const [fontScale, setFontScale] = useState<ReadingFontScale>("default")
+  const [isAnnotationsOpen, setIsAnnotationsOpen] = useState(false)
+  const [selectedAnnotationId, setSelectedAnnotationId] = useState<string | null>(null)
   const readingContainerRef = useRef<HTMLElement>(null)
   const readingProgress = useReadingScrollProgress(
     readingContainerRef,
@@ -89,6 +98,36 @@ export function BibliotecaReadingContent({
     return map
   }, [annotations])
 
+  const readingPresentation = book?.readingPresentation
+  const audioQueue = useMemo<ReadingAudioQueueItem[]>(
+    () =>
+      (reading?.nodes ?? [])
+        .filter((node) => node.audio)
+        .map((node) => ({
+          audio: node.audio!,
+          label: articleHeading(node, readingPresentation),
+          sortOrder: node.sortOrder,
+        })),
+    [reading?.nodes, readingPresentation]
+  )
+
+  useEffect(() => {
+    const openAnnotationPanel = (event: Event) => {
+      const annotationId = (event as CustomEvent<string>).detail
+      if (!annotationId) return
+      setSelectedAnnotationId(annotationId)
+      setIsAnnotationsOpen(true)
+    }
+
+    window.addEventListener(READING_ANNOTATION_VIEW_EVENT, openAnnotationPanel)
+    return () => {
+      window.removeEventListener(
+        READING_ANNOTATION_VIEW_EVENT,
+        openAnnotationPanel
+      )
+    }
+  }, [])
+
   if (error) {
     return (
       <ReadingDashboardLayout>
@@ -122,16 +161,18 @@ export function BibliotecaReadingContent({
     )
   }
 
-  const readingPresentation = book?.readingPresentation
-
   return (
     <ReadingDashboardLayout
       reading={reading}
       isIndexOpen={isIndexOpen}
       onIndexOpenChange={setIsIndexOpen}
       readingProgress={readingProgress}
+      fontScale={fontScale}
+      onFontScaleChange={setFontScale}
+      audioQueue={audioQueue}
     >
-      <main
+      <div className="flex min-h-0 flex-1 overflow-hidden">
+        <main
         ref={readingContainerRef}
         onContextMenu={(event) => {
           if (window.getSelection()?.toString().trim()) {
@@ -193,6 +234,7 @@ export function BibliotecaReadingContent({
                     annotationsByNodeKey.get(node.nodeKey) ?? EMPTY_ANNOTATIONS
                   }
                   onAnnotationUpdated={updateAnnotation}
+                  fontScale={fontScale}
                 />
               </div>
             ))}
@@ -201,7 +243,16 @@ export function BibliotecaReadingContent({
             <ReadingAnnexView key={annex.annexKey} annex={annex} />
           ))}
         </div>
-      </main>
+        </main>
+
+        {isAnnotationsOpen ? (
+          <ReadingAnnotationsPanel
+            annotations={annotations}
+            selectedAnnotationId={selectedAnnotationId}
+            onClose={() => setIsAnnotationsOpen(false)}
+          />
+        ) : null}
+      </div>
 
       <ReadingIndexSheet
         reading={reading}
@@ -236,7 +287,10 @@ export function BibliotecaReadingContent({
             open={isNoteOpen}
             onOpenChange={setIsNoteOpen}
             isSavingContent={isSavingContent}
-            onSave={saveAnnotation}
+            onSave={async (note, details) => {
+              await saveAnnotation(note, details)
+              setIsNoteOpen(false)
+            }}
             selectedText={selection?.selectedText}
             nodeLocation={nodeLocation}
             onClearSelection={clearTextSelection}

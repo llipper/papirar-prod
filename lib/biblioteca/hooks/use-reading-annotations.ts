@@ -77,7 +77,6 @@ export function useReadingAnnotations({
 }: UseReadingAnnotationsProps) {
   const [highlights, setHighlights] = useState<LawHighlight[]>([])
   const [annotations, setAnnotations] = useState<LawAnnotation[]>([])
-  const [isNoteOpen, setIsNoteOpen] = useState(false)
   const [isSavingContent, setIsSavingContent] = useState(false)
 
   const selectionRef = useRef<TextSelection | null>(selection)
@@ -242,7 +241,6 @@ export function useReadingAnnotations({
         ...details,
       })
       setAnnotations((current) => [...current, saved])
-      setIsNoteOpen(false)
       clearTextSelection()
     } finally {
       setIsSavingContent(false)
@@ -283,8 +281,6 @@ export function useReadingAnnotations({
     setHighlights,
     annotations,
     setAnnotations,
-    isNoteOpen,
-    setIsNoteOpen,
     isSavingContent,
     saveHighlight,
     saveAnnotation,

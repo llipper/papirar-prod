@@ -14,8 +14,12 @@ import {
   ReadingAudioProvider,
   useReadingAudio,
 } from "@/lib/biblioteca/reading-audio-context"
+import type { ReadingAudioQueueItem } from "@/lib/biblioteca/reading-audio-context"
 import { ReadingFloatingAudioPlayer } from "./audio/reading-floating-audio-player"
-import { ReadingDashboardHeader } from "./reading-dashboard-header"
+import {
+  ReadingDashboardHeader,
+  type ReadingFontScale,
+} from "./reading-dashboard-header"
 
 export interface ReadingDashboardLayoutProps {
   children: ReactNode
@@ -23,6 +27,9 @@ export interface ReadingDashboardLayoutProps {
   isIndexOpen?: boolean
   onIndexOpenChange?: (open: boolean) => void
   readingProgress?: number
+  fontScale?: ReadingFontScale
+  onFontScaleChange?: (scale: ReadingFontScale) => void
+  audioQueue?: ReadingAudioQueueItem[]
 }
 
 function ReadingDashboardFrame({
@@ -30,11 +37,15 @@ function ReadingDashboardFrame({
   reading,
   onIndexOpenChange,
   readingProgress,
+  fontScale,
+  onFontScaleChange,
 }: {
   children: ReactNode
   reading?: LawReading | null
   onIndexOpenChange?: (open: boolean) => void
   readingProgress?: number
+  fontScale?: ReadingFontScale
+  onFontScaleChange?: (scale: ReadingFontScale) => void
 }) {
   const { isMobile, state } = useSidebar()
   const { currentAudio } = useReadingAudio()
@@ -50,6 +61,8 @@ function ReadingDashboardFrame({
         <ReadingDashboardHeader
           reading={reading}
           onOpenIndex={() => onIndexOpenChange?.(true)}
+          fontScale={fontScale}
+          onFontScaleChange={onFontScaleChange}
         />
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden relative">
           {children}
@@ -90,14 +103,19 @@ export function ReadingDashboardLayout({
   isIndexOpen = false,
   onIndexOpenChange,
   readingProgress,
+  fontScale,
+  onFontScaleChange,
+  audioQueue,
 }: ReadingDashboardLayoutProps) {
   return (
-    <ReadingAudioProvider>
+    <ReadingAudioProvider audioQueue={audioQueue}>
       <SidebarProvider className="h-svh min-h-0 overflow-hidden">
         <ReadingDashboardFrame
           reading={reading}
           onIndexOpenChange={onIndexOpenChange}
           readingProgress={readingProgress}
+          fontScale={fontScale}
+          onFontScaleChange={onFontScaleChange}
         >
           {children}
         </ReadingDashboardFrame>
