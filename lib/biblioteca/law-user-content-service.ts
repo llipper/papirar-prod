@@ -44,7 +44,7 @@ function iso(value: unknown) {
 
 const apiBase = process.env.NEXT_PUBLIC_CLOUDFLARE_API_URL ?? "https://papirar-api.papirar-api-worker.workers.dev"
 async function d1Content(method: string, body?: unknown, query = "") {
-  const token = await firebaseAuth.currentUser?.getIdToken()
+  const token = await firebaseAuth.currentUser?.getIdToken(true)
   if (!token) throw new Error("Sessão expirada.")
   const response = await fetch(`${apiBase}/user-content${query}`, { method, headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: body === undefined ? undefined : JSON.stringify(body) })
   if (!response.ok) throw new Error("Não foi possível salvar o conteúdo.")

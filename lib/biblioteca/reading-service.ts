@@ -1,6 +1,4 @@
 import type { BibliotecaBook } from "./catalog-data"
-import { collection, getDocs, query, where } from "firebase/firestore"
-import { firestore } from "@/lib/firebase/client"
 import { getAuth } from "firebase/auth"
 import {
   createLawReadingCacheKey,
@@ -17,6 +15,7 @@ export type ReadingNode = {
   text: string
   sortOrder: number
   audio: ReadingAudio | undefined
+  inlineAudios: ReadingInlineAudio[]
 }
 
 export type ReadingAudio = {
@@ -25,6 +24,8 @@ export type ReadingAudio = {
   url: string
   durationMs: number | null
 }
+
+export type ReadingInlineAudio = ReadingAudio & { itemNumber: string; subitem?: string }
 
 export type ReadingAnnexRow = {
   rowKey: string
@@ -56,20 +57,59 @@ export type LawReading = {
 
 const READING_LOG_PREFIX = "[Papirar][Leitura]"
 
-async function firestoreRows<T>(name: string, field: string, value: string): Promise<T[]> {
-  const constraints = [where(field, "==", value)]
-  constraints.push(name === "law_versions" ? where("status", "==", "published") : where("published", "==", true))
-  if (name === "legal_node_versions") constraints.push(where("revoked_at", "==", null))
-  if (name === "lei_audio_assets") constraints.push(where("status", "==", "ready"))
-  const snapshot = await getDocs(query(collection(firestore, name), ...constraints))
-  return snapshot.docs.map((item) => ({ id: item.id, ...item.data() }) as T)
+const API_BASE = process.env.NEXT_PUBLIC_CLOUDFLARE_API_URL ?? "https://papirar-api.papirar-api-worker.workers.dev"
+const AUDIO_CACHE_TTL_MS = 10 * 60 * 1000
+
+type RemoteAudio = {
+  node_key?: string
+  audio_key: string
+  title: string
+  public_url: string
+  duration_ms?: number | null
 }
+
+type SessionAudioCacheEntry = {
+  expiresAt: number
+  audios: RemoteAudio[]
+}
+
+const sessionAudioCache = new Map<string, SessionAudioCacheEntry>()
+const sessionAudioRequests = new Map<string, Promise<RemoteAudio[]>>()
 
 export const LAW_READING_UPDATED_EVENT = "papirar:law-reading-updated"
 
 export type LawReadingUpdate = {
   reading: LawReading
   authUid: string | null
+}
+
+function inlineAudiosFor(nodeKey: string, audios: RemoteAudio[]): ReadingInlineAudio[] {
+  const escapedNodeKey = nodeKey.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+  const pattern = new RegExp(`^${escapedNodeKey}\\.item_([^.]+)(?:\\.subitem_([a-z]))?$`)
+
+  return audios.flatMap((audio) => {
+    const match = audio.node_key?.match(pattern)
+    return match && audio.public_url
+      ? [{ key: audio.audio_key, title: audio.title || "Áudio da lei", url: audio.public_url, durationMs: audio.duration_ms ?? null, itemNumber: match[1], subitem: match[2] }]
+      : []
+  })
+}
+
+function applyAudiosToReading(reading: LawReading, audios: RemoteAudio[]): LawReading {
+  const audioByNode = new Map(
+    audios
+      .filter((audio) => audio.node_key && audio.public_url)
+      .map((audio) => [audio.node_key as string, { key: audio.audio_key, title: audio.title || "Áudio da lei", url: audio.public_url, durationMs: audio.duration_ms ?? null }]),
+  )
+
+  return {
+    ...reading,
+    nodes: reading.nodes.map((node) => ({
+      ...node,
+      audio: audioByNode.get(node.nodeKey),
+      inlineAudios: inlineAudiosFor(node.nodeKey, audios),
+    })),
+  }
 }
 
 async function loadLawReadingFromRemote(
@@ -99,145 +139,55 @@ async function loadLawReadingFromRemote(
   const catalogVersion = book.version
   const catalogScope = book.scope
   if (!catalogLawId || !catalogVersion || !catalogScope) throw new Error("Metadados da lei incompletos.")
-  const response = await fetch(`${process.env.NEXT_PUBLIC_CLOUDFLARE_API_URL ?? "https://papirar-api.papirar-api-worker.workers.dev"}/catalog/reading?lawId=${encodeURIComponent(catalogLawId)}&version=${encodeURIComponent(catalogVersion)}&scope=${encodeURIComponent(catalogScope)}`, {
+  const response = await fetch(`${API_BASE}/catalog/reading?lawId=${encodeURIComponent(catalogLawId)}&version=${encodeURIComponent(catalogVersion)}&scope=${encodeURIComponent(catalogScope)}`, {
     cache: "no-store",
     headers: authToken ? { Authorization: `Bearer ${authToken}` } : undefined,
   })
   if (!response.ok) throw new Error("Não foi possível carregar o conteúdo da lei.")
-  const catalog = await response.json() as { law: { id: string; title: string; acronym: string }; version: { id: string }; nodes: Array<{ node_key: string; node_type: string; number?: string; label?: string }>; contents: Array<{ node_key: string; epigraphe?: string; text_content?: string; sort_order: number }>; audios: Array<{ node_key?: string; audio_key: string; title: string; public_url: string; duration_ms?: number | null }> }
+  const catalog = await response.json() as {
+    law: { id: string; title: string; acronym: string }
+    version: { id: string }
+    nodes: Array<{ node_key: string; node_type: string; number?: string; label?: string }>
+    contents: Array<{ node_key: string; epigraphe?: string; text_content?: string; sort_order: number }>
+    audios: RemoteAudio[]
+    annexes: Array<{ id: string; annex_key: string; title: string; subtitle?: string | null; left_header: string; right_header: string }>
+    annexRows: Array<{ annex_id: string; row_key: string; item_code?: string | null; description: string; amount_display?: string | null; note?: string | null; columns?: unknown; sort_order: number }>
+  }
   const catalogNodeByKey = new Map(catalog.nodes.map((node) => [node.node_key, node]))
-  const catalogAudioByNode = new Map(catalog.audios.filter((audio) => audio.node_key && audio.public_url).map((audio) => [audio.node_key as string, { key: audio.audio_key, title: audio.title || "Áudio da lei", url: audio.public_url, durationMs: audio.duration_ms ?? null }]))
-  return { lawId: catalog.law.id, versionId: catalog.version.id, title: catalog.law.title, acronym: catalog.law.acronym, nodes: catalog.contents.map((content) => { const node = catalogNodeByKey.get(content.node_key); return { nodeKey: content.node_key, nodeType: node?.node_type ?? "", number: node?.number ?? "", label: node?.label ?? "", epigraphe: content.epigraphe ?? "", text: content.text_content ?? "", sortOrder: content.sort_order, audio: catalogAudioByNode.get(content.node_key) } }), annexes: [] }
-  /* Firestore fallback retained below for rollback during the cutover. */
-
-  const lawId = book.lawId!
-  const versionRows = (await firestoreRows<{ id: string; version_label: string; scope_key: string; status: string }>(
-    "law_versions", "law_id", lawId
-  )).filter((row) => row.version_label === book.version && row.scope_key === book.scope && row.status === "published")
-  const versionId = versionRows[0]?.id
-  if (!versionId) {
-    console.error(`${READING_LOG_PREFIX} versão não encontrada`, {
-      lawId: book.lawId,
-      version: book.version,
-      scope: book.scope,
-      expectedStatus: "published",
-    })
-    throw new Error("Versão da lei não encontrada.")
+  const annexRowsById = new Map<string, typeof catalog.annexRows>()
+  for (const row of catalog.annexRows) {
+    const rows = annexRowsById.get(row.annex_id) ?? []
+    rows.push(row)
+    annexRowsById.set(row.annex_id, rows)
   }
-
-  console.info(`${READING_LOG_PREFIX} versão encontrada`, {
-    lawId: book.lawId,
-    versionId,
-  })
-
-  const nodeRows = await firestoreRows<{
-    node_key: string
-    node_type: string
-    number: string | null
-    label: string | null
-  }>("legal_nodes", "law_id", lawId)
-  const nodeByKey = new Map(nodeRows.map((node) => [node.node_key, node]))
-
-  const contentRows = (await firestoreRows<{
-    node_key: string
-    epigraphe: string | null
-    text_content: string | null
-    sort_order: number
-    revoked_at?: unknown
-  }>("legal_node_versions", "law_version_id", versionId))
-    .filter((row) => row.revoked_at == null)
-    .sort((a, b) => a.sort_order - b.sort_order)
-
-  const audioRows = (await firestoreRows<{
-      node_key: string | null
-      audio_key: string
-      title: string
-      public_url: string
-      duration_ms: number | null
-      law_version_id: string
-      status: string
-    }
-  >("lei_audio_assets", "law_id", lawId))
-    .filter((row) => row.law_version_id === versionId && row.status === "ready")
-  const audioByNode = new Map(
-    audioRows
-      .filter((audio) => audio.node_key && audio.public_url)
-      .map((audio) => [
-        audio.node_key as string,
-        {
-          key: audio.audio_key,
-          title: audio.title || "Áudio da lei",
-          url: audio.public_url,
-          durationMs: audio.duration_ms,
-        },
-      ])
-  )
-
-  const nodes = contentRows
-    .map((content) => {
-      const node = nodeByKey.get(content.node_key)
-      if (!node) return null
-      return {
-        nodeKey: content.node_key,
-        nodeType: node.node_type,
-        number: node.number ?? "",
-        label: node.label?.trim() ?? "",
-        epigraphe: content.epigraphe?.trim() ?? "",
-        text: content.text_content?.trim() ?? "",
-        sortOrder: content.sort_order,
-        audio: audioByNode.get(content.node_key),
-      }
-    })
-    .filter((node): node is ReadingNode => node !== null)
-
-  const annexRows = (await firestoreRows<{
-    id: string
-    annex_key: string
-    title: string
-    subtitle: string | null
-    left_header: string
-    right_header: string
-    sort_order: number
-  }>("legal_annexes", "law_version_id", versionId)).sort((a, b) => a.sort_order - b.sort_order)
-
-  const annexes: ReadingAnnex[] = []
-  for (const annex of annexRows) {
-    const rows = (await firestoreRows<{
-      row_key: string
-      item_code: string | null
-      description: string
-      amount_display: string | null
-      note: string | null
-      columns: unknown
-      sort_order: number
-    }>("legal_annex_rows", "annex_id", annex.id)).sort((a, b) => a.sort_order - b.sort_order)
-
-    annexes.push({
+  return applyAudiosToReading({
+    lawId: catalog.law.id,
+    versionId: catalog.version.id,
+    title: catalog.law.title,
+    acronym: catalog.law.acronym,
+    nodes: catalog.contents.map((content) => {
+      const node = catalogNodeByKey.get(content.node_key)
+      return { nodeKey: content.node_key, nodeType: node?.node_type ?? "", number: node?.number ?? "", label: node?.label ?? "", epigraphe: content.epigraphe ?? "", text: content.text_content ?? "", sortOrder: content.sort_order, audio: undefined, inlineAudios: [] }
+    }),
+    annexes: catalog.annexes.map((annex) => ({
       annexKey: annex.annex_key,
-      title: annex.title.trim(),
-      subtitle: annex.subtitle?.trim() ?? "",
-      leftHeader: annex.left_header.trim(),
-      rightHeader: annex.right_header.trim(),
-      rows: rows.map((row) => ({
-        rowKey: row.row_key,
-        itemCode: row.item_code?.trim() ?? "",
-        description: row.description.trim(),
-        amountDisplay: row.amount_display?.trim() ?? "",
-        note: row.note?.trim() ?? "",
-        columns: Array.isArray(row.columns) ? row.columns.map((value) => String(value ?? "")) : [],
-        sortOrder: row.sort_order,
-      })),
-    })
-  }
-
-  console.info(`${READING_LOG_PREFIX} leitura pronta`, {
-    lawId: book.lawId,
-    nodes: nodes.length,
-    audios: audioByNode.size,
-    annexes: annexes.length,
-  })
-
-  return { lawId: book.lawId!, versionId, title: book.title, acronym: book.acronym, nodes, annexes }
+      title: annex.title,
+      subtitle: annex.subtitle ?? "",
+      leftHeader: annex.left_header,
+      rightHeader: annex.right_header,
+      rows: (annexRowsById.get(annex.id) ?? [])
+        .sort((left, right) => left.sort_order - right.sort_order)
+        .map((row) => ({
+          rowKey: row.row_key,
+          itemCode: row.item_code ?? "",
+          description: row.description,
+          amountDisplay: row.amount_display ?? "",
+          note: row.note ?? "",
+          columns: Array.isArray(row.columns) ? row.columns.map((value) => String(value ?? "")) : [],
+          sortOrder: row.sort_order,
+        })),
+    })),
+  }, catalog.audios)
 }
 
 async function loadReadingForCurrentUser(book: BibliotecaBook): Promise<LawReadingUpdate> {
@@ -259,26 +209,48 @@ async function loadReadingForCurrentUser(book: BibliotecaBook): Promise<LawReadi
   return { reading, authUid }
 }
 
-function revalidateCachedReading(
-  book: BibliotecaBook,
-  cacheKey: string,
-  expectedAuthUid: string | null
-) {
-  void loadReadingForCurrentUser(book)
-    .then(async ({ reading, authUid }) => {
-      if (authUid !== expectedAuthUid) return
-      await writeCachedLawReading(cacheKey, reading)
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(
-          new CustomEvent<LawReadingUpdate>(LAW_READING_UPDATED_EVENT, {
-            detail: { reading, authUid },
-          })
-        )
-      }
+async function loadCachedReadingAudios(reading: LawReading, authUid: string, authToken: string): Promise<RemoteAudio[]> {
+  const key = `${authUid}::${reading.lawId}::${reading.versionId}`
+  const cached = sessionAudioCache.get(key)
+  if (cached && cached.expiresAt > Date.now()) return cached.audios
+
+  const inFlight = sessionAudioRequests.get(key)
+  if (inFlight) return inFlight
+
+  const request = fetch(`${API_BASE}/catalog/audio?lawId=${encodeURIComponent(reading.lawId)}&versionId=${encodeURIComponent(reading.versionId)}`, {
+    cache: "no-store",
+    headers: { Authorization: `Bearer ${authToken}` },
+  })
+    .then(async (response) => {
+      if (!response.ok) throw new Error("Não foi possível atualizar os áudios da lei.")
+      const payload = await response.json() as { audios: RemoteAudio[] }
+      const audios = payload.audios ?? []
+      sessionAudioCache.set(key, { audios, expiresAt: Date.now() + AUDIO_CACHE_TTL_MS })
+      return audios
+    })
+    .finally(() => sessionAudioRequests.delete(key))
+
+  sessionAudioRequests.set(key, request)
+  return request
+}
+
+function refreshCachedReadingAudios(reading: LawReading) {
+  const auth = getAuth()
+  const user = auth.currentUser
+  if (!user) return
+
+  const expectedUid = user.uid
+  void user.getIdToken()
+    .then((token) => loadCachedReadingAudios(reading, expectedUid, token))
+    .then((audios) => {
+      if (getAuth().currentUser?.uid !== expectedUid || typeof window === "undefined") return
+      window.dispatchEvent(new CustomEvent<LawReadingUpdate>(LAW_READING_UPDATED_EVENT, {
+        detail: { reading: applyAudiosToReading(reading, audios), authUid: expectedUid },
+      }))
     })
     .catch((reason: unknown) => {
-      console.warn(`${READING_LOG_PREFIX} atualização em segundo plano indisponível`, {
-        lawId: book.lawId,
+      console.warn(`${READING_LOG_PREFIX} atualização de áudio indisponível`, {
+        lawId: reading.lawId,
         reason,
       })
     })
@@ -299,13 +271,9 @@ export async function loadLawReading(book: BibliotecaBook): Promise<LawReading> 
       ageMs: Date.now() - cached.savedAt,
     })
 
-    // O texto aparece instantaneamente; os recursos Premium são sempre
-    // revalidados para a sessão atual e nunca vêm do armazenamento local.
-    revalidateCachedReading(
-      book,
-      cacheKey,
-      getAuth().currentUser?.uid ?? null
-    )
+    // O texto permanece local. Somente os áudios, que são exclusivos da
+    // sessão e expiram, são atualizados por uma rota pequena e deduplicada.
+    refreshCachedReadingAudios(cached.reading)
 
     return cached.reading
   }

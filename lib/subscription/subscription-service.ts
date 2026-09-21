@@ -12,6 +12,21 @@ export type SubscriptionOverview = {
   trialExpiresAt: string | null
 }
 
+const SUBSCRIPTION_CACHE_TTL_MS = 60 * 1000
+
+type SubscriptionCacheEntry = {
+  expiresAt: number
+  value: SubscriptionOverview
+}
+
+const subscriptionCache = new Map<string, SubscriptionCacheEntry>()
+const subscriptionRequests = new Map<string, Promise<SubscriptionOverview>>()
+
+function invalidateSubscriptionOverview() {
+  const uid = firebaseAuth.currentUser?.uid
+  if (uid) subscriptionCache.delete(uid)
+}
+
 async function authorizedRequest(path: string, init?: RequestInit) {
   const user = firebaseAuth.currentUser
 
@@ -43,17 +58,40 @@ async function authorizedRequest(path: string, init?: RequestInit) {
 }
 
 export async function getSubscriptionOverview() {
-  return await authorizedRequest("/subscription") as SubscriptionOverview
+  const uid = firebaseAuth.currentUser?.uid
+  if (!uid) throw new Error("Sua sessão expirou. Entre novamente para continuar.")
+
+  const cached = subscriptionCache.get(uid)
+  if (cached && cached.expiresAt > Date.now()) return cached.value
+
+  const inFlight = subscriptionRequests.get(uid)
+  if (inFlight) return inFlight
+
+  const request = (authorizedRequest("/subscription") as Promise<SubscriptionOverview>)
+    .then((value) => {
+      if (firebaseAuth.currentUser?.uid === uid) {
+        subscriptionCache.set(uid, { value, expiresAt: Date.now() + SUBSCRIPTION_CACHE_TTL_MS })
+      }
+      return value
+    })
+    .finally(() => subscriptionRequests.delete(uid))
+
+  subscriptionRequests.set(uid, request)
+  return request
 }
 
 export async function cancelMercadoPagoSubscription() {
-  return await authorizedRequest("/mercado-pago/cancel", {
+  const result = await authorizedRequest("/mercado-pago/cancel", {
     method: "POST",
   }) as SubscriptionOverview
+  invalidateSubscriptionOverview()
+  return result
 }
 
 export async function redeemPremiumTrial() {
-  return await authorizedRequest("/trial/redeem", {
+  const result = await authorizedRequest("/trial/redeem", {
     method: "POST",
   }) as SubscriptionOverview
+  invalidateSubscriptionOverview()
+  return result
 }

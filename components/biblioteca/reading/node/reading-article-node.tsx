@@ -84,7 +84,7 @@ export function ReadingArticleNode({
             <h3 className="font-display text-base leading-tight font-semibold uppercase">
               ARTIGO {node.number}
             </h3>
-            {!node.text && node.audio && (
+            {node.audio && (
               <ReadingAudioButton
                 audio={node.audio}
                 label={`Art. ${node.number}`}
@@ -98,22 +98,21 @@ export function ReadingArticleNode({
           )}
         </div>
         {node.text && (
-          <p className={`font-reading ${bodyTextSize} leading-[1.65] text-foreground/85`}>
-            {node.audio && (
-              <ReadingAudioButton
-                audio={node.audio}
-                label={`Art. ${node.number}`}
-              />
-            )}
-            <span data-node-text className="whitespace-pre-line">
-              {renderMarkedText(
-                node.text,
-                highlights,
-                annotations,
-                onAnnotationUpdated
-              )}
-            </span>
-          </p>
+          <div className={`space-y-4 font-reading ${bodyTextSize} leading-[1.65] text-foreground/85`}>
+            {node.text.split(/\n\s*\n/).map((paragraph, index) => {
+              const match = paragraph.match(/^(\d+)\.\s+([\s\S]*)$/)
+              const itemAudio = match
+                ? node.inlineAudios.find((audio) => audio.itemNumber === match[1] && !audio.subitem)
+                : undefined
+              return (
+                <p key={`${node.nodeKey}-${index}`} data-node-text className="whitespace-pre-line">
+                  {match && <strong className="font-reading font-semibold text-foreground">{match[1]}. </strong>}
+                  {itemAudio && <ReadingAudioButton audio={itemAudio} label={`Artigo ${node.number}, item ${match?.[1]}`} />}
+                  {renderMarkedText(match?.[2] ?? paragraph, highlights, annotations, onAnnotationUpdated)}
+                </p>
+              )
+            })}
+          </div>
         )}
       </section>
     )
