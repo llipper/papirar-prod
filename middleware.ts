@@ -31,15 +31,11 @@ function generateRequestId(): string {
   return crypto.randomUUID()
 }
 
-function generateNonce(): string {
-  return btoa(crypto.randomUUID())
-}
-
-function contentSecurityPolicy(nonce: string): string {
+function contentSecurityPolicy(): string {
   const isDevelopment = process.env.NODE_ENV !== "production"
   return [
     "default-src 'self'",
-    `script-src 'self' 'unsafe-inline' 'nonce-${nonce}'${isDevelopment ? " 'unsafe-eval'" : ""} https://apis.google.com https://www.gstatic.com`,
+    `script-src 'self' 'unsafe-inline'${isDevelopment ? " 'unsafe-eval'" : ""} https://apis.google.com https://www.gstatic.com`,
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob: https://*.googleusercontent.com https://*.r2.dev https://*.r2.cloudflarestorage.com",
     "font-src 'self' data:",
@@ -75,9 +71,6 @@ export function middleware(req: NextRequest) {
   }
 
   const requestId = generateRequestId()
-  const nonce = generateNonce()
-  const requestHeaders = new Headers(req.headers)
-  requestHeaders.set("x-nonce", nonce)
   const userAgent = req.headers.get("user-agent")
   const threat = classifyRequest(pathname, userAgent)
 
@@ -119,7 +112,7 @@ export function middleware(req: NextRequest) {
   }
 
   // ── Resposta normal com headers de segurança ─────────────────────────────
-  const response = NextResponse.next({ request: { headers: requestHeaders } })
+  const response = NextResponse.next()
 
   // Remove / falsifica headers que revelam tecnologia
   response.headers.delete("X-Powered-By")
@@ -129,7 +122,7 @@ export function middleware(req: NextRequest) {
   response.headers.set("X-Request-Id", requestId)
   response.headers.set("X-Content-Type-Options", "nosniff")
   response.headers.set("X-DNS-Prefetch-Control", "off")
-  response.headers.set("Content-Security-Policy", contentSecurityPolicy(nonce))
+  response.headers.set("Content-Security-Policy", contentSecurityPolicy())
 
   return response
 }
