@@ -3,7 +3,7 @@ import type { NextConfig } from "next"
 const isDevelopment = process.env.NODE_ENV !== "production"
 const contentSecurityPolicy = [
   "default-src 'self'",
-  `script-src 'self'${isDevelopment ? " 'unsafe-eval'" : ""} 'unsafe-inline' https://apis.google.com https://www.gstatic.com`,
+  `script-src 'self'${isDevelopment ? " 'unsafe-eval'" : ""} https://apis.google.com https://www.gstatic.com`,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https://*.googleusercontent.com https://*.r2.dev https://*.r2.cloudflarestorage.com",
   "font-src 'self' data:",

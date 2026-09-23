@@ -2,7 +2,7 @@
 import { buildLogPayload, classifyRequest } from "@/lib/security/threat-detector"
 
 async function handleTrap(req: NextRequest) {
-  const requestId = Math.random().toString(36).slice(2, 11)
+  const requestId = crypto.randomUUID()
   const url = new URL(req.url)
   const threat = classifyRequest(url.pathname, req.headers.get("user-agent"))
   const payload = buildLogPayload(req as unknown as Request, { ...threat, type: "honeypot" }, requestId)
