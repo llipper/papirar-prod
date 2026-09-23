@@ -1,20 +1,6 @@
 import type { NextConfig } from "next"
 
 const isDevelopment = process.env.NODE_ENV !== "production"
-const contentSecurityPolicy = [
-  "default-src 'self'",
-  `script-src 'self'${isDevelopment ? " 'unsafe-eval'" : ""} https://apis.google.com https://www.gstatic.com`,
-  "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: https://*.googleusercontent.com https://*.r2.dev https://*.r2.cloudflarestorage.com",
-  "font-src 'self' data:",
-  "connect-src 'self' https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.workers.dev",
-  "media-src 'self' blob: https://*.r2.dev https://*.r2.cloudflarestorage.com https://*.workers.dev",
-  "object-src 'none'",
-  "base-uri 'self'",
-  "form-action 'self'",
-  "frame-src 'self' https://accounts.google.com https://*.firebaseapp.com https://auth.papirar.com",
-  "frame-ancestors 'none'",
-].join("; ")
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
@@ -51,10 +37,6 @@ const nextConfig: NextConfig = {
         // the callback response and can leave the Google popup blank.
         source: "/((?!__/).*)",
         headers: [
-          {
-            key: "Content-Security-Policy",
-            value: contentSecurityPolicy,
-          },
           {
             key: "Cross-Origin-Opener-Policy",
             value: "same-origin-allow-popups",

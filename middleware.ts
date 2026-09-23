@@ -11,6 +11,7 @@ const BYPASS_PREFIXES = [
   "/manifest",
   "/robots",
   "/sitemap",
+  "/__/",
 ]
 
 // Domínio canônico para onde o tráfego fora dos hosts permitidos é redirecionado
@@ -28,6 +29,28 @@ const ALLOWED_HOSTS = new Set([
 
 function generateRequestId(): string {
   return crypto.randomUUID()
+}
+
+function generateNonce(): string {
+  return btoa(crypto.randomUUID())
+}
+
+function contentSecurityPolicy(nonce: string): string {
+  const isDevelopment = process.env.NODE_ENV !== "production"
+  return [
+    "default-src 'self'",
+    `script-src 'self' 'nonce-${nonce}'${isDevelopment ? " 'unsafe-eval'" : ""} https://apis.google.com https://www.gstatic.com`,
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: blob: https://*.googleusercontent.com https://*.r2.dev https://*.r2.cloudflarestorage.com",
+    "font-src 'self' data:",
+    "connect-src 'self' https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.workers.dev",
+    "media-src 'self' blob: https://*.r2.dev https://*.r2.cloudflarestorage.com https://*.workers.dev",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-src 'self' https://accounts.google.com https://*.firebaseapp.com https://auth.papirar.com",
+    "frame-ancestors 'none'",
+  ].join("; ")
 }
 
 export function middleware(req: NextRequest) {
@@ -52,6 +75,9 @@ export function middleware(req: NextRequest) {
   }
 
   const requestId = generateRequestId()
+  const nonce = generateNonce()
+  const requestHeaders = new Headers(req.headers)
+  requestHeaders.set("x-nonce", nonce)
   const userAgent = req.headers.get("user-agent")
   const threat = classifyRequest(pathname, userAgent)
 
@@ -93,7 +119,7 @@ export function middleware(req: NextRequest) {
   }
 
   // ── Resposta normal com headers de segurança ─────────────────────────────
-  const response = NextResponse.next()
+  const response = NextResponse.next({ request: { headers: requestHeaders } })
 
   // Remove / falsifica headers que revelam tecnologia
   response.headers.delete("X-Powered-By")
@@ -103,6 +129,7 @@ export function middleware(req: NextRequest) {
   response.headers.set("X-Request-Id", requestId)
   response.headers.set("X-Content-Type-Options", "nosniff")
   response.headers.set("X-DNS-Prefetch-Control", "off")
+  response.headers.set("Content-Security-Policy", contentSecurityPolicy(nonce))
 
   return response
 }
