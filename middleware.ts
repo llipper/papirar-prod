@@ -39,7 +39,7 @@ function contentSecurityPolicy(nonce: string): string {
   const isDevelopment = process.env.NODE_ENV !== "production"
   return [
     "default-src 'self'",
-    `script-src 'self' 'nonce-${nonce}'${isDevelopment ? " 'unsafe-eval'" : ""} https://apis.google.com https://www.gstatic.com`,
+    `script-src 'self' 'unsafe-inline' 'nonce-${nonce}'${isDevelopment ? " 'unsafe-eval'" : ""} https://apis.google.com https://www.gstatic.com`,
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob: https://*.googleusercontent.com https://*.r2.dev https://*.r2.cloudflarestorage.com",
     "font-src 'self' data:",
