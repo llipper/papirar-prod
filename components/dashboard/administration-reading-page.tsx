@@ -17,6 +17,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { DashboardShell } from "@/components/dashboard/dashboard-shell"
 import { bibliotecaBooks } from "@/lib/biblioteca/catalog-data"
 import { currentUserIsAdmin } from "@/components/dashboard/administration-page"
 import {
@@ -282,69 +283,67 @@ export function AdministrationReadingPage({ bookId }: { bookId: string }) {
 
   if (isAdmin === null)
     return (
-      <div className="p-8 text-sm text-muted-foreground">
-        Validando permissão…
-      </div>
+      <DashboardShell title="Administração" description="Validando acesso ao catálogo.">
+        <div className="text-sm text-muted-foreground">Validando permissão…</div>
+      </DashboardShell>
     )
   if (!isAdmin)
     return (
-      <div className="flex min-h-screen items-center justify-center p-6">
-        <Alert className="max-w-xl">
+      <DashboardShell title="Administração" description="Gestão do catálogo jurídico.">
+        <Alert className="mx-auto w-full max-w-xl">
           <ShieldAlert />
           <AlertTitle>Acesso restrito</AlertTitle>
           <AlertDescription>
             Esta área exige uma conta administradora.
           </AlertDescription>
         </Alert>
-      </div>
+      </DashboardShell>
     )
   if (!book)
     return (
-      <div className="p-6">
+      <DashboardShell title="Administração" description="Gestão do catálogo jurídico.">
         <Alert variant="destructive">
           <CircleAlert />
           <AlertTitle>Livro não encontrado</AlertTitle>
         </Alert>
-      </div>
+      </DashboardShell>
     )
   if (loading)
     return (
-      <div className="p-8 text-sm text-muted-foreground">
-        Carregando texto para edição…
-      </div>
+      <DashboardShell title="Administração" description={`${book.title} · edição direta`}>
+        <div className="text-sm text-muted-foreground">Carregando texto para edição…</div>
+      </DashboardShell>
     )
   if (error)
     return (
-      <div className="flex min-h-screen items-center justify-center p-6">
+      <DashboardShell title="Administração" description={`${book.title} · edição direta`}>
         <Alert variant="destructive" className="max-w-xl">
           <CircleAlert />
           <AlertTitle>Não foi possível abrir a edição</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
         </Alert>
-      </div>
+      </DashboardShell>
     )
 
   return (
-    <main className="min-h-screen bg-background pb-24">
-      <header className="sticky top-0 z-20 border-b bg-background/95 px-5 py-3 backdrop-blur">
-        <div className="mx-auto flex max-w-4xl items-center justify-between gap-4">
-          <div className="min-w-0">
-            <p className="text-xs text-muted-foreground">
-              Administração · edição direta
-            </p>
-            <h1 className="truncate text-lg font-semibold">
-              {record?.short_title ?? book.title}
-            </h1>
-          </div>
+    <DashboardShell
+      title="Administração"
+      description={`${record?.short_title ?? book.title} · edição direta do catálogo`}
+    >
+      <div className="mx-auto w-full max-w-4xl">
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm font-medium">{record?.official_name ?? book.title}</p>
           <div className="flex shrink-0 gap-2">
             <Button
               variant="outline"
+              size="sm"
               onClick={() => router.push("/dashboard/administracao")}
             >
               <ArrowLeft /> Catálogo
             </Button>
             <Button
               variant="destructive"
+              size="sm"
               onClick={() => void revokeVersion()}
               disabled={Boolean(saving)}
             >
@@ -352,7 +351,7 @@ export function AdministrationReadingPage({ bookId }: { bookId: string }) {
             </Button>
           </div>
         </div>
-      </header>
+      </div>
       <section className="mx-auto max-w-4xl px-5 pt-8">
         <div className="mb-8 border-b pb-5">
           <p className="text-sm font-medium">Texto completo</p>
@@ -505,13 +504,13 @@ export function AdministrationReadingPage({ bookId }: { bookId: string }) {
               </div>
             </article>
           ))}
-        </div>
+      </div>
       </section>
       {feedback ? (
         <div className="fixed right-5 bottom-5 z-30 max-w-sm rounded-xl border bg-card px-4 py-3 text-sm shadow-lg">
           {feedback}
         </div>
       ) : null}
-    </main>
+    </DashboardShell>
   )
 }
