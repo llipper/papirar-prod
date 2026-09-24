@@ -11,7 +11,8 @@ Avisar todas as contas quando uma lei publicada no catálogo tiver uma nova vers
 - [x] Expor API autenticada de listagem, leitura individual e leitura de todos.
 - [x] Trocar o sino de demonstração por uma caixa funcional com quantidade de não lidas, atualização periódica e link para a lei.
 - [x] Validar TypeScript do Worker e da aplicação web.
-- [ ] Aplicar migração no D1 remoto e publicar Worker/web após autorização para operações remotas.
+- [x] Aplicar migração no D1 remoto e publicar Worker/web após autorização para operações remotas.
+- [x] Confirmar lista vazia inicial no site de produção sem eventos retroativos.
 
 ## Critérios funcionais
 
