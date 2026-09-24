@@ -70,7 +70,7 @@ export default {
       if (url.pathname.startsWith("/admin/catalog/")) {
         if (decodeIdentityClaims(identity.token).admin !== true)
           throw new HttpError(403, "Acesso restrito a administradores.");
-        return adminCatalog(request, url, env, cors);
+        return await adminCatalog(request, url, env, cors);
       }
       if (
         request.method === "POST" &&
@@ -464,14 +464,13 @@ async function adminCatalog(
     ).bind(versionId, lawId).first();
     if (!version) throw new HttpError(404, "Versão não encontrada.");
     const rows = await env.DB.prepare(
-      "SELECT n.payload_json AS node_json,n.node_key,n.node_type,n.number,n.label,n.parent_key,nv.id,nv.sort_order,nv.payload_json AS version_json FROM legal_nodes n JOIN legal_node_versions nv ON nv.node_key=n.node_key WHERE n.law_id=? AND nv.law_version_id=? AND nv.revoked_at IS NULL ORDER BY nv.sort_order,n.node_key",
+      "SELECT n.payload_json AS node_json,n.node_key,n.node_type,n.number,n.label,nv.id,nv.sort_order,nv.payload_json AS version_json FROM legal_nodes n JOIN legal_node_versions nv ON nv.node_key=n.node_key WHERE n.law_id=? AND nv.law_version_id=? AND nv.revoked_at IS NULL ORDER BY nv.sort_order,n.node_key",
     ).bind(lawId, versionId).all<{
       node_json: string;
       node_key: string;
       node_type: string;
       number: string | null;
       label: string | null;
-      parent_key: string | null;
       id: string;
       sort_order: number;
       version_json: string;
@@ -482,7 +481,7 @@ async function adminCatalog(
       return {
         id: row.id,
         node_key: row.node_key,
-        parent_key: row.parent_key ?? (typeof node.parent_key === "string" ? node.parent_key : null),
+        parent_key: typeof node.parent_key === "string" ? node.parent_key : null,
         node_type: row.node_type,
         number: row.number ?? (typeof node.number === "string" ? node.number : null),
         label: row.label ?? (typeof node.label === "string" ? node.label : null),
