@@ -95,3 +95,35 @@ export async function writeCachedLawReading(key: string, reading: LawReading) {
     }
   })
 }
+
+/** Invalida somente as versões em cache da lei alterada. */
+export async function invalidateCachedLawReadings(lawId: string) {
+  for (const [key, value] of memoryCache) {
+    if (value.reading.lawId === lawId) memoryCache.delete(key)
+  }
+
+  const database = await openDatabase()
+  if (!database) return
+
+  await new Promise<void>((resolve) => {
+    const transaction = database.transaction(STORE_NAME, "readwrite")
+    const store = transaction.objectStore(STORE_NAME)
+    const request = store.openCursor()
+
+    request.onsuccess = () => {
+      const cursor = request.result
+      if (!cursor) return
+      const value = cursor.value as CachedLawReading
+      if (value.reading?.lawId === lawId) cursor.delete()
+      cursor.continue()
+    }
+    transaction.oncomplete = () => {
+      database.close()
+      resolve()
+    }
+    transaction.onerror = () => {
+      database.close()
+      resolve()
+    }
+  })
+}

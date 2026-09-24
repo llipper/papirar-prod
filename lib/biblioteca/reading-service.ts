@@ -2,6 +2,7 @@ import type { BibliotecaBook } from "./catalog-data"
 import { getAuth } from "firebase/auth"
 import {
   createLawReadingCacheKey,
+  invalidateCachedLawReadings,
   readCachedLawReading,
   writeCachedLawReading,
 } from "./law-reading-cache"
@@ -77,10 +78,22 @@ const sessionAudioCache = new Map<string, SessionAudioCacheEntry>()
 const sessionAudioRequests = new Map<string, Promise<RemoteAudio[]>>()
 
 export const LAW_READING_UPDATED_EVENT = "papirar:law-reading-updated"
+export const LAW_READING_INVALIDATED_EVENT = "papirar:law-reading-invalidated"
 
 export type LawReadingUpdate = {
   reading: LawReading
   authUid: string | null
+}
+
+export type LawReadingInvalidation = { lawId: string }
+
+export async function refreshLawReadingAfterChange(lawId: string) {
+  await invalidateCachedLawReadings(lawId)
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent<LawReadingInvalidation>(LAW_READING_INVALIDATED_EVENT, {
+      detail: { lawId },
+    }))
+  }
 }
 
 function inlineAudiosFor(nodeKey: string, audios: RemoteAudio[]): ReadingInlineAudio[] {

@@ -461,13 +461,20 @@ async function adminCatalog(
     const versionId = url.searchParams.get("versionId")?.trim() ?? "";
     if (!lawId || !versionId)
       throw new HttpError(422, "Lei e versão são obrigatórias.");
+    const paginated = url.searchParams.has("limit") || url.searchParams.has("offset");
+    const requestedLimit = Number(url.searchParams.get("limit") ?? 60);
+    const offset = Number(url.searchParams.get("offset") ?? 0);
+    if (paginated && (!Number.isInteger(requestedLimit) || requestedLimit < 1 || requestedLimit > 100 || !Number.isInteger(offset) || offset < 0))
+      throw new HttpError(422, "A página solicitada é inválida.");
+    const limit = paginated ? requestedLimit : 0;
     const version = await env.DB.prepare(
       "SELECT id FROM law_versions WHERE id=? AND law_id=?",
     ).bind(versionId, lawId).first();
     if (!version) throw new HttpError(404, "Versão não encontrada.");
-    const rows = await env.DB.prepare(
-      "SELECT n.payload_json AS node_json,n.node_key,n.node_type,n.number,n.label,nv.id,nv.sort_order,nv.revoked_at,nv.payload_json AS version_json FROM legal_nodes n JOIN legal_node_versions nv ON nv.node_key=n.node_key WHERE n.law_id=? AND nv.law_version_id=? AND nv.revoked_at IS NULL ORDER BY nv.sort_order,n.node_key",
-    ).bind(lawId, versionId).all<{
+    const query = "SELECT n.payload_json AS node_json,n.node_key,n.node_type,n.number,n.label,nv.id,nv.sort_order,nv.revoked_at,nv.payload_json AS version_json FROM legal_nodes n JOIN legal_node_versions nv ON nv.node_key=n.node_key WHERE n.law_id=? AND nv.law_version_id=? AND nv.revoked_at IS NULL ORDER BY nv.sort_order,n.node_key";
+    const rows = await (paginated
+      ? env.DB.prepare(`${query} LIMIT ? OFFSET ?`).bind(lawId, versionId, limit + 1, offset)
+      : env.DB.prepare(query).bind(lawId, versionId)).all<{
       node_json: string;
       node_key: string;
       node_type: string;
@@ -478,7 +485,9 @@ async function adminCatalog(
       revoked_at: string | null;
       version_json: string;
     }>();
-    return json(rows.results.map((row) => {
+    const hasMore = paginated && rows.results.length > limit;
+    const pageRows = paginated && hasMore ? rows.results.slice(0, limit) : rows.results;
+    const nodes = pageRows.map((row) => {
       const node = parseJsonObject(row.node_json);
       const content = parseJsonObject(row.version_json);
       return {
@@ -493,7 +502,8 @@ async function adminCatalog(
         sort_order: row.sort_order,
         revoked_at: row.revoked_at,
       };
-    }), 200, cors);
+    });
+    return json(paginated ? { nodes, next_offset: hasMore ? offset + limit : null } : nodes, 200, cors);
   }
 
   const lawMatch = path.match(/^\/admin\/catalog\/laws\/([^/]+)$/);
@@ -551,24 +561,47 @@ async function adminCatalog(
   if (request.method === "POST" && path === "/admin/catalog/nodes") {
     const body = await adminJsonBody(request);
     const lawId = field(body.law_id).trim();
+    const versionId = field(body.law_version_id).trim();
     const nodeKey = field(body.node_key).trim();
     const nodeType = field(body.node_type).trim();
     const parentKey = typeof body.parent_key === "string" ? body.parent_key : null;
     const number = typeof body.number === "string" && body.number ? body.number : null;
     const label = typeof body.label === "string" && body.label ? body.label : null;
-    if (!lawId || !nodeKey.startsWith(`${lawId}.`) || !nodeType || nodeKey.length > 512)
+    const sortOrder = Number(body.sort_order);
+    if (!lawId || !versionId || !nodeKey.startsWith(`${lawId}.`) || !nodeType || nodeKey.length > 512 || !Number.isFinite(sortOrder) || Math.abs(sortOrder) > 2_000_000_000)
       throw new HttpError(422, "Os dados do elemento são inválidos.");
     const exists = await env.DB.prepare("SELECT id FROM laws WHERE id=?").bind(lawId).first();
     if (!exists) throw new HttpError(404, "Lei não encontrada.");
+    const version = await env.DB.prepare("SELECT id FROM law_versions WHERE id=? AND law_id=?").bind(versionId, lawId).first();
+    if (!version) throw new HttpError(404, "Versão não encontrada para esta lei.");
+    if (parentKey) {
+      const parent = await env.DB.prepare("SELECT id FROM legal_nodes WHERE law_id=? AND node_key=?").bind(lawId, parentKey).first();
+      if (!parent) throw new HttpError(422, "O elemento pai não pertence a esta lei.");
+    }
     const payload = JSON.stringify({ node_key: nodeKey, law_id: lawId, parent_key: parentKey, node_type: nodeType, number, label, created_at: new Date().toISOString() });
+    const contentId = crypto.randomUUID();
+    const content = JSON.stringify({
+      id: contentId,
+      law_version_id: versionId,
+      node_key: nodeKey,
+      epigraphe: field(body.epigraphe),
+      text_content: field(body.text_content),
+      sort_order: sortOrder,
+      revoked_at: null,
+    });
     try {
-      await env.DB.prepare(
-        "INSERT INTO legal_nodes(id,law_id,node_key,node_type,number,label,published,payload_json) VALUES(?,?,?,?,?,?,1,?)",
-      ).bind(crypto.randomUUID(), lawId, nodeKey, nodeType, number, label, payload).run();
+      await env.DB.batch([
+        env.DB.prepare(
+          "INSERT INTO legal_nodes(id,law_id,node_key,node_type,number,label,published,payload_json) VALUES(?,?,?,?,?,?,1,?)",
+        ).bind(crypto.randomUUID(), lawId, nodeKey, nodeType, number, label, payload),
+        env.DB.prepare(
+          "INSERT INTO legal_node_versions(id,law_version_id,node_key,sort_order,published,revoked_at,payload_json) VALUES(?,?,?,?,1,NULL,?)",
+        ).bind(contentId, versionId, nodeKey, sortOrder, content),
+      ]);
     } catch {
       throw new HttpError(409, "Já existe um elemento com esta chave.");
     }
-    return json({ ok: true }, 201, cors);
+    return json({ id: contentId }, 201, cors);
   }
 
   if (request.method === "POST" && path === "/admin/catalog/node-versions") {
@@ -644,7 +677,7 @@ async function adminCatalog(
     }
     if (body.sort_order !== undefined) {
       const order = Number(body.sort_order);
-      if (!Number.isInteger(order) || order < 0 || order > 2_000_000_000)
+      if (!Number.isFinite(order) || Math.abs(order) > 2_000_000_000)
         throw new HttpError(422, "A ordem do elemento é inválida.");
       parts.push("'$.sort_order',?");
       values.push(order);

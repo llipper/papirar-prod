@@ -6,8 +6,10 @@ import {
   type BibliotecaBook,
 } from "@/lib/biblioteca/catalog-data"
 import {
+  LAW_READING_INVALIDATED_EVENT,
   LAW_READING_UPDATED_EVENT,
   loadLawReading,
+  type LawReadingInvalidation,
   type LawReading,
   type LawReadingUpdate,
 } from "@/lib/biblioteca/reading-service"
@@ -68,6 +70,23 @@ export function useReadingData({
 
     window.addEventListener(LAW_READING_UPDATED_EVENT, handleBackgroundUpdate)
 
+    const handleInvalidation = (event: Event) => {
+      const invalidation = (event as CustomEvent<LawReadingInvalidation>).detail
+      if (!invalidation || invalidation.lawId !== book.lawId || cancelled) return
+
+      // loadLawReading passa a buscar a versão remota porque a entrada local
+      // da obra já foi invalidada. A leitura atual fica visível enquanto carrega.
+      void loadLawReading(book)
+        .then((value) => {
+          if (!cancelled) setReading(value)
+        })
+        .catch((reason: unknown) => {
+          if (!cancelled) setError(reason instanceof Error ? reason.message : "Não foi possível atualizar a lei.")
+        })
+    }
+
+    window.addEventListener(LAW_READING_INVALIDATED_EVENT, handleInvalidation)
+
     loadLawReading(book)
       .then((value) => {
         if (cancelled) return
@@ -115,6 +134,7 @@ export function useReadingData({
         LAW_READING_UPDATED_EVENT,
         handleBackgroundUpdate
       )
+      window.removeEventListener(LAW_READING_INVALIDATED_EVENT, handleInvalidation)
     }
   }, [authUid, book, initialNodeKey, initialSelectedText])
 

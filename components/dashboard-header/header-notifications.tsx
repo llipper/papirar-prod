@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { Bell, BookOpen, CheckCheck } from "lucide-react"
 
@@ -13,6 +13,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import { bibliotecaBooks } from "@/lib/biblioteca/catalog-data"
+import { refreshLawReadingAfterChange } from "@/lib/biblioteca/reading-service"
 import {
   listLegalChangeNotifications,
   markAllLegalChangeNotificationsRead,
@@ -39,10 +40,24 @@ export function HeaderNotifications() {
   const [unread, setUnread] = useState(0)
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(true)
+  const seenNotificationIds = useRef<Set<string> | null>(null)
 
   const refresh = useCallback(async () => {
     try {
       const result = await listLegalChangeNotifications()
+      const seen = seenNotificationIds.current
+      if (seen === null) {
+        // Na carga inicial, invalida leis com notificações pendentes e registra
+        // as demais como já conhecidas para não refazer leituras antigas.
+        seenNotificationIds.current = new Set(result.notifications.map((item) => item.id))
+        await Promise.all(result.notifications
+          .filter((item) => !item.is_read)
+          .map((item) => refreshLawReadingAfterChange(item.law_id)))
+      } else {
+        const newItems = result.notifications.filter((item) => !seen.has(item.id))
+        for (const item of result.notifications) seen.add(item.id)
+        await Promise.all(newItems.map((item) => refreshLawReadingAfterChange(item.law_id)))
+      }
       setItems(result.notifications)
       setUnread(result.unread_count)
     } catch {
@@ -65,6 +80,7 @@ export function HeaderNotifications() {
   }
 
   async function openNotification(item: LegalChangeNotification) {
+    await refreshLawReadingAfterChange(item.law_id)
     if (!item.is_read) {
       await markLegalChangeNotificationRead(item.id)
       setItems((current) => current.map((entry) => entry.id === item.id ? { ...entry, is_read: true } : entry))

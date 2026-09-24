@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { memo, useCallback, useEffect, useState } from "react"
 import {
   ArrowDown,
   ArrowLeft,
@@ -22,8 +22,7 @@ import { bibliotecaBooks } from "@/lib/biblioteca/catalog-data"
 import { currentUserIsAdmin } from "@/components/dashboard/administration-page"
 import {
   createAdminLegalNode,
-  createAdminLegalNodeContent,
-  listAdminLegalNodes,
+  listAdminLegalNodesPage,
   listAdminLaws,
   revokeAdminLegalNode,
   updateAdminLegalNode,
@@ -46,6 +45,8 @@ const NODE_TYPES = [
   ["alinea", "Alínea"],
 ] as const
 
+const ADMIN_NODE_PAGE_SIZE = 60
+
 function newNodeKey(lawId: string, nodeType: string) {
   const suffix =
     typeof crypto !== "undefined" && "randomUUID" in crypto
@@ -54,6 +55,179 @@ function newNodeKey(lawId: string, nodeType: string) {
   return `${lawId}.admin_${nodeType}_${suffix}`
 }
 
+function isDescendantOf(
+  node: AdminLegalNode,
+  ancestorKey: string,
+  nodesByKey: Map<string, AdminLegalNode>,
+) {
+  let parentKey = node.parent_key
+  while (parentKey) {
+    if (parentKey === ancestorKey) return true
+    parentKey = nodesByKey.get(parentKey)?.parent_key ?? null
+  }
+  return false
+}
+
+type AdminLegalNodeDraft = Pick<
+  AdminLegalNode,
+  "number" | "label" | "epigraphe" | "text_content"
+>
+
+type AdminLegalNodeEditorProps = {
+  node: AdminLegalNode
+  index: number
+  count: number
+  operationInProgress: boolean
+  onSave: (node: AdminLegalNode, draft: AdminLegalNodeDraft) => Promise<void>
+  onMove: (index: number, direction: -1 | 1) => void
+  onAdd: (
+    node: AdminLegalNode,
+    placement: "above" | "below" | "child",
+  ) => void
+  onRevoke: (node: AdminLegalNode) => void
+}
+
+const AdminLegalNodeEditor = memo(function AdminLegalNodeEditor({
+  node,
+  index,
+  count,
+  operationInProgress,
+  onSave,
+  onMove,
+  onAdd,
+  onRevoke,
+}: AdminLegalNodeEditorProps) {
+  const [draft, setDraft] = useState<AdminLegalNodeDraft>(() => ({
+    number: node.number,
+    label: node.label,
+    epigraphe: node.epigraphe,
+    text_content: node.text_content,
+  }))
+  const [saving, setSaving] = useState(false)
+
+  function changeDraft(patch: Partial<AdminLegalNodeDraft>) {
+    setDraft((current) => ({ ...current, ...patch }))
+  }
+
+  async function save() {
+    if (saving || operationInProgress || node.id.startsWith("new-")) return
+    setSaving(true)
+    try {
+      await onSave(node, draft)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <article className="group border-b py-7 first:border-t">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <span className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+          {node.node_type}
+        </span>
+        <div className="flex items-center gap-1 opacity-70 transition group-hover:opacity-100">
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            title="Mover para cima"
+            onClick={() => onMove(index, -1)}
+            disabled={index === 0 || operationInProgress || saving}
+          >
+            <ArrowUp />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            title="Mover para baixo"
+            onClick={() => onMove(index, 1)}
+            disabled={index === count - 1 || operationInProgress || saving}
+          >
+            <ArrowDown />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            title="Salvar elemento"
+            onClick={() => void save()}
+            disabled={operationInProgress || saving || node.id.startsWith("new-")}
+          >
+            <Save />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            className="text-destructive hover:text-destructive"
+            title="Remover elemento"
+            onClick={() => onRevoke(node)}
+            disabled={operationInProgress || saving}
+          >
+            <Trash2 />
+          </Button>
+        </div>
+      </div>
+      <div className="grid gap-2 sm:grid-cols-[150px_1fr]">
+        <Input
+          className="rounded-none border-0 border-b border-border bg-transparent px-1 shadow-none"
+          aria-label="Número"
+          placeholder="Número"
+          value={draft.number ?? ""}
+          onChange={(event) => changeDraft({ number: event.target.value })}
+        />
+        <Input
+          className="rounded-none border-0 border-b border-border bg-transparent px-1 shadow-none"
+          aria-label="Título ou rótulo"
+          placeholder="Título ou rótulo"
+          value={draft.label ?? ""}
+          onChange={(event) => changeDraft({ label: event.target.value })}
+        />
+      </div>
+      <Input
+        className="mt-2 rounded-none border-0 border-b border-border bg-transparent px-1 shadow-none"
+        aria-label="Epígrafe"
+        placeholder="Epígrafe (opcional)"
+        value={draft.epigraphe}
+        onChange={(event) => changeDraft({ epigraphe: event.target.value })}
+      />
+      <Textarea
+        className="mt-3 min-h-24 rounded-none border-0 border-b border-border bg-transparent px-1 font-serif leading-7 shadow-none"
+        aria-label="Texto"
+        placeholder="Texto do elemento"
+        value={draft.text_content}
+        onChange={(event) => changeDraft({ text_content: event.target.value })}
+      />
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => onAdd(node, "above")}
+          disabled={operationInProgress || saving}
+        >
+          <Plus /> Acima
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => onAdd(node, "below")}
+          disabled={operationInProgress || saving}
+        >
+          <Plus /> Abaixo
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => onAdd(node, "child")}
+          disabled={operationInProgress || saving}
+        >
+          <Plus /> Filho
+        </Button>
+        {saving ? (
+          <span className="text-xs text-muted-foreground">Salvando…</span>
+        ) : null}
+      </div>
+    </article>
+  )
+})
+
 export function AdministrationReadingPage({ bookId }: { bookId: string }) {
   const router = useRouter()
   const book = bibliotecaBooks.find((item) => item.id === bookId)
@@ -61,6 +235,8 @@ export function AdministrationReadingPage({ bookId }: { bookId: string }) {
   const [record, setRecord] = useState<AdminLaw | null>(null)
   const [versionId, setVersionId] = useState<string | null>(null)
   const [nodes, setNodes] = useState<AdminLegalNode[]>([])
+  const [nextOffset, setNextOffset] = useState<number | null>(null)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -88,11 +264,17 @@ export function AdministrationReadingPage({ bookId }: { bookId: string }) {
           throw new Error(
             "Livro ou versão não encontrado no catálogo administrativo."
           )
-        const loadedNodes = await listAdminLegalNodes(found.law_id, version.id)
+        const page = await listAdminLegalNodesPage(
+          found.law_id,
+          version.id,
+          0,
+          ADMIN_NODE_PAGE_SIZE,
+        )
         if (!active) return
         setRecord(found)
         setVersionId(version.id)
-        setNodes(loadedNodes)
+        setNodes(page.nodes)
+        setNextOffset(page.next_offset)
       })
       .catch((reason) => {
         if (active)
@@ -110,57 +292,46 @@ export function AdministrationReadingPage({ bookId }: { bookId: string }) {
     }
   }, [book?.lawId, isAdmin])
 
-  function changeNode(nodeKey: string, patch: Partial<AdminLegalNode>) {
-    setNodes((current) =>
-      current.map((node) =>
-        node.node_key === nodeKey ? { ...node, ...patch } : node
-      )
-    )
-  }
-
-  async function saveNode(node: AdminLegalNode) {
-    if (saving || node.id.startsWith("new-")) return
-    setSaving(node.node_key)
-    setFeedback(null)
-    try {
-      await Promise.all([
-        updateAdminLegalNode(node),
-        updateAdminLegalNodeContent(node),
-      ])
-      setFeedback(`${node.number || node.node_type} salvo.`)
-    } catch (reason) {
-      setFeedback(
-        reason instanceof Error
-          ? reason.message
-          : "Não foi possível salvar este elemento."
-      )
-    } finally {
-      setSaving(null)
-    }
-  }
-
-  async function persistOrder(next: AdminLegalNode[]) {
-    await Promise.all(
-      next
-        .filter((node) => !node.id.startsWith("new-"))
-        .map((node, index) =>
-          updateAdminLegalNodeOrder(node.id, (index + 1) * 10)
+  const saveNode = useCallback(
+    async (node: AdminLegalNode, draft: AdminLegalNodeDraft) => {
+      if (node.id.startsWith("new-")) return
+      const updatedNode = { ...node, ...draft }
+      setFeedback(null)
+      try {
+        await Promise.all([
+          updateAdminLegalNode(updatedNode),
+          updateAdminLegalNodeContent(updatedNode),
+        ])
+        setNodes((current) => current.map((item) =>
+          item.node_key === node.node_key ? updatedNode : item,
+        ))
+        setFeedback(`${updatedNode.number || updatedNode.node_type} salvo.`)
+      } catch (reason) {
+        setFeedback(
+          reason instanceof Error
+            ? reason.message
+            : "Não foi possível salvar este elemento."
         )
-    )
-  }
+      }
+    },
+    [],
+  )
 
   async function moveNode(index: number, direction: -1 | 1) {
     const target = index + direction
     if (target < 0 || target >= nodes.length || saving) return
+    const currentNode = nodes[index]
+    const adjacentNode = nodes[target]
     const next = [...nodes]
-    ;[next[index], next[target]] = [next[target], next[index]]
-    next.forEach((node, position) => {
-      node.sort_order = (position + 1) * 10
-    })
+    next[index] = { ...currentNode, sort_order: adjacentNode.sort_order }
+    next[target] = { ...adjacentNode, sort_order: currentNode.sort_order }
     setNodes(next)
     setSaving("__order__")
     try {
-      await persistOrder(next)
+      await Promise.all([
+        updateAdminLegalNodeOrder(currentNode.id, adjacentNode.sort_order),
+        updateAdminLegalNodeOrder(adjacentNode.id, currentNode.sort_order),
+      ])
       setFeedback("Ordem atualizada.")
     } catch (reason) {
       setFeedback(
@@ -183,10 +354,49 @@ export function AdministrationReadingPage({ bookId }: { bookId: string }) {
       placement === "child"
         ? (target?.node_key ?? null)
         : (target?.parent_key ?? null)
-    const insertAt = target
-      ? nodes.findIndex((node) => node.node_key === target.node_key) +
-        (placement === "above" ? 0 : 1)
-      : 0
+    const targetIndex = target
+      ? nodes.findIndex((node) => node.node_key === target.node_key)
+      : -1
+    if (target && targetIndex < 0) return
+    const nodesByKey = new Map(nodes.map((node) => [node.node_key, node]))
+    let insertAt = 0
+    if (target && placement === "above") {
+      insertAt = targetIndex
+    } else if (target) {
+      let lastDescendantIndex = targetIndex
+      for (let index = targetIndex + 1; index < nodes.length; index += 1) {
+        if (isDescendantOf(nodes[index], target.node_key, nodesByKey))
+          lastDescendantIndex = index
+      }
+      insertAt = lastDescendantIndex + 1
+    }
+    let following = nodes[insertAt] ?? null
+    if (!following && nextOffset !== null) {
+      try {
+        const adjacentPage = await listAdminLegalNodesPage(
+          record.law_id,
+          versionId,
+          nodes.length,
+          1,
+        )
+        following = adjacentPage.nodes[0] ?? null
+      } catch (reason) {
+        setFeedback(
+          reason instanceof Error
+            ? reason.message
+            : "Não foi possível verificar a posição do próximo dispositivo.",
+        )
+        return
+      }
+    }
+    const previous = nodes[insertAt - 1] ?? null
+    const sortOrder = previous && following
+      ? (previous.sort_order + following.sort_order) / 2
+      : previous
+        ? previous.sort_order + 1
+        : following
+          ? following.sort_order - 1
+          : 0
     const created: AdminLegalNode = {
       id: `new-${key}`,
       node_key: key,
@@ -196,36 +406,36 @@ export function AdministrationReadingPage({ bookId }: { bookId: string }) {
       label: "",
       epigraphe: "",
       text_content: "",
-      sort_order: 0,
+      sort_order: sortOrder,
     }
     const next = [...nodes]
     next.splice(Math.max(0, insertAt), 0, created)
-    next.forEach((node, index) => {
-      node.sort_order = (index + 1) * 10
-    })
     setNodes(next)
     setSaving("__new__")
     try {
-      await createAdminLegalNode({
+      const result = await createAdminLegalNode({
         law_id: record.law_id,
+        law_version_id: versionId,
         node_key: key,
         parent_key: parentKey,
         node_type: newType,
         number: null,
         label: "",
-      })
-      await createAdminLegalNodeContent({
-        law_version_id: versionId,
-        node_key: key,
         epigraphe: "",
         text_content: "",
-        sort_order: created.sort_order,
+        sort_order: sortOrder,
       })
-      await persistOrder(next)
-      setNodes(await listAdminLegalNodes(record.law_id, versionId))
+      setNodes((current) => current.map((node) =>
+        node.node_key === key ? { ...node, id: result.id } : node
+      ))
+      setNextOffset((currentOffset) =>
+        currentOffset === null ? null : currentOffset + 1,
+      )
       setFeedback("Novo elemento adicionado. Edite o texto e salve.")
     } catch (reason) {
-      setNodes(nodes)
+      setNodes((current) =>
+        current.filter((node) => node.node_key !== key),
+      )
       setFeedback(
         reason instanceof Error
           ? reason.message
@@ -233,6 +443,29 @@ export function AdministrationReadingPage({ bookId }: { bookId: string }) {
       )
     } finally {
       setSaving(null)
+    }
+  }
+
+  async function loadMoreNodes() {
+    if (!record || !versionId || nextOffset === null || loadingMore) return
+    setLoadingMore(true)
+    try {
+      const page = await listAdminLegalNodesPage(
+        record.law_id,
+        versionId,
+        nodes.length,
+        ADMIN_NODE_PAGE_SIZE,
+      )
+      setNodes((current) => [...current, ...page.nodes])
+      setNextOffset(page.next_offset)
+    } catch (reason) {
+      setFeedback(
+        reason instanceof Error
+          ? reason.message
+          : "Não foi possível carregar a próxima parte do catálogo.",
+      )
+    } finally {
+      setLoadingMore(false)
     }
   }
 
@@ -311,7 +544,9 @@ export function AdministrationReadingPage({ bookId }: { bookId: string }) {
   if (loading)
     return (
       <DashboardShell title="Administração" description={`${book.title} · edição direta`}>
-        <div className="text-sm text-muted-foreground">Carregando texto para edição…</div>
+        <div className="text-sm text-muted-foreground">
+          Carregando os primeiros {ADMIN_NODE_PAGE_SIZE} dispositivos para edição…
+        </div>
       </DashboardShell>
     )
   if (error)
@@ -383,127 +618,31 @@ export function AdministrationReadingPage({ bookId }: { bookId: string }) {
         </div>
         <div>
           {nodes.map((node, index) => (
-            <article
+            <AdminLegalNodeEditor
               key={node.node_key}
-              className="group border-b py-7 first:border-t"
-            >
-              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                <span className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
-                  {node.node_type}
-                </span>
-                <div className="flex items-center gap-1 opacity-70 transition group-hover:opacity-100">
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    title="Mover para cima"
-                    onClick={() => void moveNode(index, -1)}
-                    disabled={index === 0 || Boolean(saving)}
-                  >
-                    <ArrowUp />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    title="Mover para baixo"
-                    onClick={() => void moveNode(index, 1)}
-                    disabled={index === nodes.length - 1 || Boolean(saving)}
-                  >
-                    <ArrowDown />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    title="Salvar elemento"
-                    onClick={() => void saveNode(node)}
-                    disabled={Boolean(saving) || node.id.startsWith("new-")}
-                  >
-                    <Save />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    className="text-destructive hover:text-destructive"
-                    title="Remover elemento"
-                    onClick={() => void revokeNode(node)}
-                    disabled={Boolean(saving)}
-                  >
-                    <Trash2 />
-                  </Button>
-                </div>
-              </div>
-              <div className="grid gap-2 sm:grid-cols-[150px_1fr]">
-                <Input
-                  className="rounded-none border-0 border-b border-border bg-transparent px-1 shadow-none"
-                  aria-label="Número"
-                  placeholder="Número"
-                  value={node.number ?? ""}
-                  onChange={(event) =>
-                    changeNode(node.node_key, { number: event.target.value })
-                  }
-                />
-                <Input
-                  className="rounded-none border-0 border-b border-border bg-transparent px-1 shadow-none"
-                  aria-label="Título ou rótulo"
-                  placeholder="Título ou rótulo"
-                  value={node.label ?? ""}
-                  onChange={(event) =>
-                    changeNode(node.node_key, { label: event.target.value })
-                  }
-                />
-              </div>
-              <Input
-                className="mt-2 rounded-none border-0 border-b border-border bg-transparent px-1 shadow-none"
-                aria-label="Epígrafe"
-                placeholder="Epígrafe (opcional)"
-                value={node.epigraphe}
-                onChange={(event) =>
-                  changeNode(node.node_key, { epigraphe: event.target.value })
-                }
-              />
-              <Textarea
-                className="mt-3 min-h-24 rounded-none border-0 border-b border-border bg-transparent px-1 font-serif leading-7 shadow-none"
-                aria-label="Texto"
-                placeholder="Texto do elemento"
-                value={node.text_content}
-                onChange={(event) =>
-                  changeNode(node.node_key, {
-                    text_content: event.target.value,
-                  })
-                }
-              />
-              <div className="mt-4 flex flex-wrap items-center gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => void addNode(node, "above")}
-                  disabled={Boolean(saving)}
-                >
-                  <Plus /> Acima
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => void addNode(node, "below")}
-                  disabled={Boolean(saving)}
-                >
-                  <Plus /> Abaixo
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => void addNode(node, "child")}
-                  disabled={Boolean(saving)}
-                >
-                  <Plus /> Filho
-                </Button>
-                {saving === node.node_key ? (
-                  <span className="text-xs text-muted-foreground">
-                    Salvando…
-                  </span>
-                ) : null}
-              </div>
-            </article>
+              node={node}
+              index={index}
+              count={nodes.length}
+              operationInProgress={Boolean(saving)}
+              onSave={saveNode}
+              onMove={moveNode}
+              onAdd={addNode}
+              onRevoke={revokeNode}
+            />
           ))}
+          {nextOffset !== null ? (
+            <div className="flex justify-center py-6">
+              <Button
+                variant="outline"
+                onClick={() => void loadMoreNodes()}
+                disabled={loadingMore || Boolean(saving)}
+              >
+                {loadingMore
+                  ? "Carregando…"
+                  : `Carregar mais dispositivos (${nodes.length} carregados)`}
+              </Button>
+            </div>
+          ) : null}
       </div>
       </section>
       {feedback ? (
