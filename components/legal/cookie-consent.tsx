@@ -1,23 +1,52 @@
 "use client"
 
 import Link from "next/link"
-import { useEffect, useState } from "react"
+import { useSyncExternalStore } from "react"
 
 const CONSENT_KEY = "papirar.privacy.notice.v1"
+const CONSENT_EVENT = "papirar:privacy-notice-dismissed"
+let dismissedInMemory = false
+
+function subscribeToConsent(onChange: () => void) {
+  window.addEventListener("storage", onChange)
+  window.addEventListener(CONSENT_EVENT, onChange)
+  return () => {
+    window.removeEventListener("storage", onChange)
+    window.removeEventListener(CONSENT_EVENT, onChange)
+  }
+}
+
+function getConsentSnapshot() {
+  if (dismissedInMemory) return true
+  try {
+    return window.localStorage.getItem(CONSENT_KEY) === "seen"
+  } catch {
+    return false
+  }
+}
+
+function getServerConsentSnapshot() {
+  return false
+}
 
 export function CookieConsent() {
-  const [visible, setVisible] = useState(false)
-
-  useEffect(() => {
-    setVisible(window.localStorage.getItem(CONSENT_KEY) !== "seen")
-  }, [])
+  const dismissed = useSyncExternalStore(
+    subscribeToConsent,
+    getConsentSnapshot,
+    getServerConsentSnapshot
+  )
 
   function dismiss() {
-    window.localStorage.setItem(CONSENT_KEY, "seen")
-    setVisible(false)
+    dismissedInMemory = true
+    try {
+      window.localStorage.setItem(CONSENT_KEY, "seen")
+    } catch {
+      // Keep the notice dismissed for this page session when storage is blocked.
+    }
+    window.dispatchEvent(new Event(CONSENT_EVENT))
   }
 
-  if (!visible) return null
+  if (dismissed) return null
 
   return (
     <aside

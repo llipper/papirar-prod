@@ -1,6 +1,6 @@
 "use client"
 
-import { Bell, CheckCircle2 } from "lucide-react"
+import { Bell } from "lucide-react"
 
 export function HeaderNotifications() {
   return (

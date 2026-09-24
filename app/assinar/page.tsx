@@ -8,8 +8,7 @@ import { MercadoPagoCheckoutButton } from "@/components/subscription/mercado-pag
 
 const benefits = [
   "Explicações em áudio para estudar com mais entendimento",
-  "Áudios completos e recursos de revisão",
-  "Comparação de atualizações legais",
+  "Acesso aos áudios explicativos do catálogo",
   "Cancele quando quiser",
 ]
 

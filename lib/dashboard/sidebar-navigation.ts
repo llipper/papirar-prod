@@ -1,6 +1,5 @@
 import {
   BookOpenIcon,
-  CreditCardIcon,
   FilePenLineIcon,
   HighlighterIcon,
   HouseIcon,

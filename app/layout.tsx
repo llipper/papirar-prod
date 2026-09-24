@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next"
+import { headers } from "next/headers"
 import { SpeedInsights } from "@vercel/speed-insights/next"
 import { Geist_Mono, Inter, Lora, Playfair_Display, Quicksand } from "next/font/google"
 
@@ -114,11 +115,13 @@ const playfair = Playfair_Display({
   variable: "--font-display-family",
 })
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  await headers()
+
   return (
     <html
       lang="pt-BR"

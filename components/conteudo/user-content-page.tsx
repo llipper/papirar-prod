@@ -53,38 +53,48 @@ function formatDate(value: string | null) {
 export function UserContentPage({ mode }: { mode: ContentPageMode }) {
   const [items, setItems] = useState<LawUserContentOverviewItem[]>([])
   const [query, setQuery] = useState("")
-  const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [includeArchived, setIncludeArchived] = useState(false)
+  const [loadedArchived, setLoadedArchived] = useState<boolean | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
   const [pendingDelete, setPendingDelete] = useState<LawUserContentOverviewItem | null>(null)
 
   useEffect(() => {
     let cancelled = false
-    setIsLoading(true)
     loadLawUserContentOverview(includeArchived)
       .then((value) => {
-        if (!cancelled) setItems(value)
+        if (!cancelled) {
+          setItems(value)
+          setError(null)
+          setLoadedArchived(includeArchived)
+        }
       })
       .catch((reason: unknown) => {
-        if (!cancelled) setError(reason instanceof Error ? reason.message : "Não foi possível carregar seu conteúdo.")
-      })
-      .finally(() => {
-        if (!cancelled) setIsLoading(false)
+        if (!cancelled) {
+          setError(reason instanceof Error ? reason.message : "Não foi possível carregar seu conteúdo.")
+          setLoadedArchived(includeArchived)
+        }
       })
     return () => { cancelled = true }
   }, [includeArchived])
 
+  const isLoading = loadedArchived !== includeArchived
+  const currentItems = useMemo(
+    () => loadedArchived === includeArchived ? items : [],
+    [includeArchived, items, loadedArchived]
+  )
+  const currentError = loadedArchived === includeArchived ? error : null
+
   const visibleItems = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase()
-    return items
+    return currentItems
       .filter((item) => item.type === (mode === "annotations" ? "annotation" : "highlight"))
       .filter((item) => {
         if (!normalized) return true
         const book = bibliotecaBooks.find((entry) => entry.lawId === item.lawId)
         return `${book?.title ?? item.lawId} ${book?.acronym ?? ""} ${item.nodeKey} ${item.selectedText} ${item.note ?? ""}`.toLocaleLowerCase().includes(normalized)
       })
-  }, [items, mode, query])
+  }, [currentItems, mode, query])
 
   const groups = useMemo(() => {
     const grouped = new Map<string, LawUserContentOverviewItem[]>()
@@ -235,8 +245,8 @@ export function UserContentPage({ mode }: { mode: ContentPageMode }) {
           <div className="mx-auto w-full max-w-6xl px-4 py-5 lg:px-8">
             {isLoading ? (
               <div className="flex min-h-64 items-center justify-center"><LoaderCircle className="size-6 animate-spin text-muted-foreground" /></div>
-            ) : error ? (
-              <div className="mt-10 rounded-2xl border border-destructive/20 bg-destructive/5 p-6 text-sm text-destructive">{error}</div>
+            ) : currentError ? (
+              <div className="mt-10 rounded-2xl border border-destructive/20 bg-destructive/5 p-6 text-sm text-destructive">{currentError}</div>
             ) : groups.length === 0 ? (
               <div className="mt-10 rounded-2xl border border-dashed p-12 text-center">
                 {mode === "annotations" ? <FilePenLine className="mx-auto size-8 text-muted-foreground" /> : <Highlighter className="mx-auto size-8 text-muted-foreground" />}

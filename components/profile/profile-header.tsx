@@ -1,6 +1,7 @@
 "use client"
 
 import { Camera, Headphones, Play, CalendarDays } from "lucide-react"
+import Image from "next/image"
 
 import { Button } from "@/components/ui/button"
 import { UserProfile } from "@/lib/profile/profile-service"
@@ -57,9 +58,12 @@ export function ProfileHeader({
           />
           <span className="relative flex size-[78px] items-center justify-center rounded-full border-[5px] border-background bg-primary text-2xl font-black text-primary-foreground">
             {profile.avatarUrl ? (
-              <img
+              <Image
                 src={profile.avatarUrl}
                 alt={profile.displayName}
+                width={78}
+                height={78}
+                unoptimized
                 className="size-full rounded-full object-cover"
               />
             ) : (

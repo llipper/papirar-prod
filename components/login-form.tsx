@@ -1,12 +1,12 @@
 "use client"
 
-import Image from "next/image"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import { useState } from "react"
 import { Eye, EyeOff } from "lucide-react"
 
 import { cn } from "@/lib/utils"
+import { ThemeLogo } from "@/components/brand/theme-logo"
 import { Button } from "@/components/ui/button"
 import {
   Field,
@@ -83,14 +83,7 @@ export function LoginForm({ className }: { className?: string }) {
           {/* Header */}
           <div className="mb-2 flex flex-col items-center text-center">
             <Link href="/" className="mb-5 transition-transform hover:scale-105 active:scale-95">
-              <Image
-                src="/logo.svg"
-                alt="Papirar"
-                width={44}
-                height={44}
-                priority
-                className="h-11 w-11 object-contain dark:invert"
-              />
+              <ThemeLogo size={44} className="size-11" />
             </Link>
 
             <h1 className="text-2xl font-semibold tracking-tight text-foreground">

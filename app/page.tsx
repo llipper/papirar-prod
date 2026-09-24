@@ -1,4 +1,5 @@
 import { LandingPage } from "@/components/landing/landing-page"
+import { headers } from "next/headers"
 
 const structuredData = {
   "@context": "https://schema.org",
@@ -8,7 +9,7 @@ const structuredData = {
       "@id": "https://www.papirar.com/#organization",
       name: "Papirar",
       url: "https://www.papirar.com",
-      logo: "https://www.papirar.com/icon.png",
+      logo: "https://www.papirar.com/logo__dark.svg",
       email: "suporte@papirar.com",
       sameAs: [
         "https://www.instagram.com/papirarapp",
@@ -44,13 +45,6 @@ const structuredData = {
         availability: "https://schema.org/InStock",
         url: "https://www.papirar.com/#premium",
       },
-      aggregateRating: {
-        "@type": "AggregateRating",
-        ratingValue: "4.9",
-        ratingCount: "1250",
-        bestRating: "5",
-        worstRating: "1",
-      },
     },
     {
       "@type": "FAQPage",
@@ -61,7 +55,7 @@ const structuredData = {
           name: "Quais leis e códigos estão disponíveis no Papirar?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "O Papirar conta com as principais leis e códigos para concursos públicos e OAB, incluindo a Constituição Federal de 1988, Código Penal, Código de Processo Penal, Código Penal Militar, ECA, Lei Maria da Penha, Lei de Drogas, Lei 8.112/90, Lei de Licitações (Lei 14.133/21), LGPD e muito mais, sempre atualizadas.",
+            text: "O Papirar organiza leis e códigos para concursos públicos e OAB, incluindo a Constituição Federal de 1988, Código Penal, Código de Processo Penal, Código Penal Militar, ECA, Lei Maria da Penha, Lei de Drogas, Lei 8.112/90, Lei de Licitações (Lei 14.133/21), LGPD e outros materiais. Confira sempre a redação vigente em fonte oficial.",
           },
         },
         {
@@ -82,10 +76,10 @@ const structuredData = {
         },
         {
           "@type": "Question",
-          name: "O Papirar funciona offline?",
+          name: "Como funciona a leitura offline no Web?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "Sim! Os assinantes do Papirar Premium podem baixar as leis completas para leitura offline com armazenamento criptografado e seguro no celular ou tablet.",
+            text: "Depois de carregar uma lei online, o Web pode reutilizar uma cópia local do texto neste navegador. Isso não é um download permanente nem armazenamento criptografado; a disponibilidade depende do cache do navegador. Áudios e recursos sincronizados precisam de conexão.",
           },
         },
         {
@@ -93,7 +87,7 @@ const structuredData = {
           name: "Como funciona a assinatura do Papirar Premium?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "O Papirar Premium custa R$ 24,99 por mês, sem fidelidade ou carência. Você tem acesso a explicações em áudio com inteligência artificial, leitura offline e comparação de alterações legais, podendo cancelar a qualquer momento.",
+            text: "O Papirar Premium custa R$ 24,99 por mês após 3 dias de teste gratuito. O plano inclui acesso aos áudios do catálogo; a assinatura pode ser cancelada no painel.",
           },
         },
       ],
@@ -101,12 +95,15 @@ const structuredData = {
   ],
 }
 
-export default function Page() {
+export default async function Page() {
+  const nonce = (await headers()).get("x-nonce") ?? undefined
+
   return (
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+        nonce={nonce}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData).replace(/</g, "\\u003c") }}
       />
       <LandingPage />
     </>

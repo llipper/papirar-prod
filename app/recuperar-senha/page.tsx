@@ -1,10 +1,10 @@
 "use client"
 
-import Image from "next/image"
 import Link from "next/link"
 import { useState } from "react"
 
 import { AuthPageShell } from "@/components/auth/auth-page-shell"
+import { ThemeLogo } from "@/components/brand/theme-logo"
 import { Button } from "@/components/ui/button"
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
@@ -49,14 +49,7 @@ export default function ForgotPasswordPage() {
             {/* Header */}
             <div className="mb-2 flex flex-col items-center text-center">
               <Link href="/" className="mb-5 transition-transform hover:scale-105 active:scale-95">
-                <Image
-                  src="/logo.svg"
-                  alt="Papirar"
-                  width={44}
-                  height={44}
-                  priority
-                  className="h-11 w-11 object-contain dark:invert"
-                />
+                <ThemeLogo size={44} className="size-11" />
               </Link>
 
               <h1 className="text-2xl font-semibold tracking-tight text-foreground">

@@ -1,6 +1,3 @@
 "use client"
 
-export {
-  ReadingFloatingAudioPlayer,
-  type ReadingFloatingAudioPlayerProps,
-} from "./reading/audio/reading-floating-audio-player"
+export { ReadingFloatingAudioPlayer } from "./reading/audio/reading-floating-audio-player"

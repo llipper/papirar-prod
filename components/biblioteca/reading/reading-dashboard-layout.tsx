@@ -100,7 +100,6 @@ function ReadingDashboardFrame({
 export function ReadingDashboardLayout({
   children,
   reading,
-  isIndexOpen = false,
   onIndexOpenChange,
   readingProgress,
   fontScale,

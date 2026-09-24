@@ -119,10 +119,7 @@ export function useReadingSelection(isNoteOpen: boolean) {
         startOffset: startRange.toString().length,
         endOffset: endRange.toString().length,
         top: Math.max(8, Math.min(window.innerHeight - 8, top)),
-        left: Math.max(
-          12,
-          Math.min(window.innerWidth - menuWidth - 12, preferredLeft)
-        ),
+        left,
       }
 
       setSelection((current) => {

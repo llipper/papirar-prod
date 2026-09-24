@@ -10,7 +10,6 @@ import {
   Clock3,
   FolderOpen,
   Headphones,
-  Highlighter,
   LibraryBig,
   Play,
   Quote,
@@ -24,10 +23,6 @@ import {
   bibliotecaCategories,
 } from "@/lib/biblioteca/catalog-data"
 import { firebaseAuth } from "@/lib/firebase/client"
-import {
-  getCurrentProfile,
-  type UserProfile,
-} from "@/lib/profile/profile-service"
 
 const apiBase = (
   process.env.NEXT_PUBLIC_CLOUDFLARE_API_URL ??
@@ -103,14 +98,9 @@ function calculateProgress(seconds: number) {
 }
 
 export function HomePage() {
-  const [profile, setProfile] = useState<UserProfile | null>(null)
   const [progress, setProgress] = useState<ReadingProgress | null>(null)
 
   useEffect(() => {
-    void getCurrentProfile()
-      .then(setProfile)
-      .catch(() => setProfile(null))
-
     void (async () => {
       try {
         const user = firebaseAuth.currentUser
@@ -135,9 +125,6 @@ export function HomePage() {
       }
     })()
   }, [])
-
-  const firstName =
-    profile?.displayName?.trim().split(/\s+/)[0] || "estudante"
 
   const continuedBook = useMemo(() => {
     if (!progress) return null

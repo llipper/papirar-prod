@@ -1,4 +1,3 @@
-import { waitForBrowserSession } from "@/lib/auth/browser-session"
 import { firebaseAuth } from "@/lib/firebase/client"
 import type { LawReading } from "./reading-service"
 import {
@@ -25,12 +24,6 @@ export type LawUserContentOverviewItem = { id: string; type: "highlight" | "anno
 
 function highlightStyle(value: unknown): LawHighlightStyle {
   return value === "underline" ? "underline" : "highlight"
-}
-
-async function requireUid() {
-  const user = await waitForBrowserSession()
-  if (!user) throw new Error("Sessão expirada.")
-  return user.uid
 }
 
 function iso(value: unknown) {

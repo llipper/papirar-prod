@@ -11,7 +11,6 @@ import {
   Menu,
   Shield,
   Sparkles,
-  Smartphone,
   HelpCircle,
 } from "lucide-react"
 
@@ -53,7 +52,7 @@ const features = [
 ]
 
 const legalCatalog = [
-  { name: "Constituição Federal de 1988", category: "Direito Constitucional", badge: "Atualizada 2026" },
+  { name: "Constituição Federal de 1988", category: "Direito Constitucional", badge: "Constituição" },
   { name: "Código Penal (CP)", category: "Direito Penal", badge: "Completo" },
   { name: "Código de Processo Penal (CPP)", category: "Processo Penal", badge: "Completo" },
   { name: "Estatuto da Criança e do Adolescente (ECA)", category: "Estatutos", badge: "Completo" },
@@ -71,14 +70,14 @@ const faqs = [
       "O Papirar é uma plataforma especializada no estudo da legislação brasileira (lei seca) para concursos públicos, Exame de Ordem (OAB) e faculdades de Direito. Ele oferece leitura hierárquica, marcações coloridas sincronizadas, anotações por artigo e resumos explicativos em áudio.",
   },
   {
-    question: "As leis disponíveis no Papirar estão sempre atualizadas?",
+    question: "Como conferir se uma lei está vigente?",
     answer:
-      "Sim. O catálogo de leis do Papirar é mantido e revisado de acordo com as publicações oficiais no Diário Oficial da União e legislação vigente do Planalto, garantindo que você nunca estude por artigos revogados ou desatualizados.",
+      "O Papirar organiza as versões disponíveis no catálogo. Como leis podem mudar, confira a redação vigente nas fontes oficiais, como o Portal da Legislação do Planalto e o Diário Oficial da União.",
   },
   {
     question: "Como funciona a leitura offline de leis no Papirar?",
     answer:
-      "Os assinantes do plano Papirar Premium podem salvar as leis para leitura offline diretamente no dispositivo, com armazenamento criptografado seguro (AES-256), permitindo estudar em viagens ou locais sem sinal de internet.",
+      "Depois de carregar uma lei online, o Web pode reutilizar uma cópia local do texto neste navegador. Isso não é um download permanente nem armazenamento criptografado; a disponibilidade depende do cache do navegador. Áudios e recursos sincronizados precisam de conexão.",
   },
   {
     question: "Posso cancelar minha assinatura quando quiser?",
@@ -325,7 +324,7 @@ export function LandingPage() {
               Mais profundidade e rendimento para os seus estudos.
             </h2>
             <p className="mt-5 max-w-lg text-base leading-7 text-neutral-600">
-              Acelere sua preparação para a aprovação com acesso ilimitado a explicações em áudio, leitura de leis totalmente offline e histórico de alterações normativas.
+              Acelere sua preparação com explicações em áudio e ferramentas para destacar e revisar o conteúdo jurídico.
             </p>
           </LandingReveal>
 
@@ -334,7 +333,7 @@ export function LandingPage() {
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <h3 className="text-base font-semibold text-neutral-900">Assinatura Premium Mensal</h3>
-                  <p className="mt-0.5 text-xs text-neutral-500">Acesso ilimitado a todas as ferramentas</p>
+                  <p className="mt-0.5 text-xs text-neutral-500">Recursos Premium para apoiar sua rotina de estudos</p>
                 </div>
                 <span className="rounded-full bg-neutral-950 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-white">
                   Completo
@@ -348,9 +347,7 @@ export function LandingPage() {
               <ul className="mt-6 space-y-3 text-sm text-neutral-700">
                 {[
                   "Explicações e resumos em áudio com IA",
-                  "Download de leis para leitura offline",
                   "Destaques e anotações ilimitadas",
-                  "Comparação de alterações e novidades legislativas",
                 ].map((benefit) => (
                   <li key={benefit} className="flex items-center gap-3">
                     <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-neutral-900">
@@ -360,13 +357,12 @@ export function LandingPage() {
                   </li>
                 ))}
               </ul>
-             <Button
-  disabled
-  className="mt-8 h-12 w-full rounded-full text-sm font-semibold"
->
-  Assinar Papirar Premium
-  <ArrowRight className="ml-1 size-4" />
-</Button>
+              <Button asChild className="mt-8 h-12 w-full rounded-full text-sm font-semibold">
+                <Link href="/cadastro">
+                  Criar conta para assinar
+                  <ArrowRight className="ml-1 size-4" />
+                </Link>
+              </Button>
 
 <p className="mt-3 flex items-center justify-center gap-1.5 text-center text-xs text-neutral-500">
   <Shield className="size-3.5 text-emerald-600" />
@@ -414,10 +410,10 @@ export function LandingPage() {
             Crie sua conta gratuitamente e leve suas leis, anotações e rotina de estudos com você.
           </p>
           <Link
-            href="/login"
+            href="/cadastro"
             className="mt-8 inline-flex rounded-full bg-white px-7 py-3.5 text-sm font-semibold text-neutral-950 shadow-lg transition-transform hover:-translate-y-0.5 hover:bg-neutral-100"
           >
-            Entrar no Papirar Gratuitamente <ArrowRight className="ml-2 size-4" />
+            Criar conta gratuitamente <ArrowRight className="ml-2 size-4" />
           </Link>
         </LandingReveal>
       </section>

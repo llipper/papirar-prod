@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState } from "react"
+import { startTransition, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react"
 import { firebaseAuth } from "@/lib/firebase/client"
 import type { LawReading } from "@/lib/biblioteca/reading-service"
 import {
@@ -80,22 +80,22 @@ export function useReadingAnnotations({
   const [isSavingContent, setIsSavingContent] = useState(false)
 
   const selectionRef = useRef<TextSelection | null>(selection)
-  selectionRef.current = selection
+  useLayoutEffect(() => {
+    selectionRef.current = selection
+  }, [selection])
 
   // Carga inicial com Cache First (0ms) + SWR em segundo plano
   useEffect(() => {
     let cancelled = false
-    if (!reading) {
-      setHighlights([])
-      setAnnotations([])
-      return
-    }
+    if (!reading) return
 
     // 1. Carrega imediatamente do cache local para renderização instantânea (0ms)
     const cached = readLocalUserContent(reading)
     if (cached) {
-      setHighlights(cached.highlights)
-      setAnnotations(cached.annotations)
+      startTransition(() => {
+        setHighlights(cached.highlights)
+        setAnnotations(cached.annotations)
+      })
     }
 
     // 2. Revalida em segundo plano a partir da API D1

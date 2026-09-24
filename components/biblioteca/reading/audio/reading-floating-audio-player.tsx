@@ -8,8 +8,6 @@ import { ReadingPlayerControls } from "./reading-player-controls"
 import { ReadingPlayerVolume } from "./reading-player-volume"
 import { ReadingPlayerNext } from "./reading-player-next"
 
-export interface ReadingFloatingAudioPlayerProps {}
-
 export function ReadingFloatingAudioPlayer() {
   const {
     currentAudio,

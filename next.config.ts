@@ -13,7 +13,8 @@ const nextConfig: NextConfig = {
     localPatterns: [
       { pathname: "/capas/**" },
       { pathname: "/mock/**", search: "" },
-      { pathname: "/logo.svg", search: "" },
+      { pathname: "/logo__dark.svg", search: "" },
+      { pathname: "/logo__white.svg", search: "" },
       { pathname: "/bg/**" },
       { pathname: "/bg-white.png", search: "" },
       { pathname: "/bg.png", search: "" },

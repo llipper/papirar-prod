@@ -6,7 +6,6 @@ import {
   Bold,
   Calendar,
   ChevronDown,
-  CircleHelp,
   FileEdit,
   FileText,
   HelpCircle,

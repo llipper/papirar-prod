@@ -138,7 +138,7 @@ export function BibliotecaContent() {
                 </h1>
 
                 <p className="mt-2 text-sm text-muted-foreground">
-                  Explore leis organizadas, atualizadas e com áudio
+                  Explore leis organizadas e com áudio
                   explicativo integrado.
                 </p>
 
@@ -148,13 +148,13 @@ export function BibliotecaContent() {
                   <FeatureCard
                     icon={Headphones}
                     title="Ouça em qualquer lugar"
-                    description="Web, mobile ou offline"
+                    description="Web e aplicativo móvel"
                   />
 
                   <FeatureCard
                     icon={BarChart3}
-                    title="Conteúdo atualizado"
-                    description="Sempre conforme a legislação"
+                    title="Conteúdo jurídico"
+                    description="Confira a vigência em fonte oficial"
                   />
 
                   <FeatureCard

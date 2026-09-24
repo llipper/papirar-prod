@@ -1,6 +1,7 @@
 "use client"
 
 import { Camera } from "lucide-react"
+import Image from "next/image"
 import { useState } from "react"
 
 import { Button } from "@/components/ui/button"
@@ -65,7 +66,7 @@ export function ProfileEditDialog({
             <FieldLabel>Avatar</FieldLabel>
             <div className="flex items-center gap-3">
               <div className="flex size-10 items-center justify-center overflow-hidden rounded-full border bg-muted text-sm font-bold">
-                {profile.avatarUrl ? <img src={profile.avatarUrl} alt="Avatar atual" className="size-full object-cover" /> : profile.displayName.slice(0, 1).toUpperCase()}
+                {profile.avatarUrl ? <Image src={profile.avatarUrl} alt="Avatar atual" width={40} height={40} unoptimized className="size-full object-cover" /> : profile.displayName.slice(0, 1).toUpperCase()}
               </div>
               <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-accent">
                 <Camera className="size-3.5" />

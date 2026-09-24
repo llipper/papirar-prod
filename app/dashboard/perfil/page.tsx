@@ -44,8 +44,19 @@ export default function ProfilePage() {
   }, [])
 
   useEffect(() => {
-    void loadProfile()
-  }, [loadProfile])
+    let cancelled = false
+    getCurrentProfile()
+      .then((value) => {
+        if (!cancelled) setProfile(value)
+      })
+      .catch((loadError: unknown) => {
+        if (!cancelled) setError(loadError instanceof Error ? loadError.message : "Não foi possível carregar seu perfil.")
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false)
+      })
+    return () => { cancelled = true }
+  }, [])
 
   async function handleSave(
     value: Pick<UserProfile, "displayName" | "username" | "bio" | "profileColor">

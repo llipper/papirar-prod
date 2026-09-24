@@ -1,7 +1,7 @@
 "use client"
 
-import { CalendarClock, Check, CheckCircle2, Crown, CreditCard, ExternalLink, Headphones, Layers3, LoaderCircle, LockKeyhole, Sparkles, Zap } from "lucide-react"
-import { useCallback, useEffect, useState } from "react"
+import { CalendarClock, Check, CheckCircle2, Crown, CreditCard, ExternalLink, Headphones, LoaderCircle, LockKeyhole, Sparkles } from "lucide-react"
+import { useEffect, useState } from "react"
 
 import { MercadoPagoCheckoutButton } from "@/components/subscription/mercado-pago-checkout-button"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
@@ -14,18 +14,13 @@ import { useAuthUser } from "@/lib/auth/use-auth-user"
 
 const benefits = [
   { icon: Headphones, title: "Áudios das leis", description: "Estude ouvindo explicações claras, onde estiver." },
-  { icon: Layers3, title: "Recursos completos", description: "Mais ferramentas para revisar e avançar." },
-  { icon: Zap, title: "Acesso prioritário", description: "Receba primeiro as novidades do Papirar." },
   { icon: Sparkles, title: "Mais foco", description: "Uma experiência feita para sua evolução." },
 ] as const
 
 const comparison = [
   ["Acesso aos conteúdos básicos", true, true],
   ["Áudios explicativos das leis", false, true],
-  ["Recursos completos de estudo", false, true],
-  ["Leitura offline e controles de áudio", false, true],
-  ["Comparação de atualizações legais", false, true],
-  ["Novidades e suporte prioritários", false, true],
+  ["Controles de áudio", false, true],
 ] as const
 
 function dateLabel(value: string | null) {
@@ -37,57 +32,57 @@ function dateLabel(value: string | null) {
 export function SubscriptionManagementCard({ compact = false }: { compact?: boolean }) {
   const authUser = useAuthUser()
   const [subscription, setSubscription] = useState<SubscriptionOverview | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [loadedUid, setLoadedUid] = useState<string | null>(null)
+  const [requestLoading, setRequestLoading] = useState(true)
   const [cancelling, setCancelling] = useState(false)
   const [redeeming, setRedeeming] = useState(false)
-  const [error, setError] = useState<string>()
+  const [subscriptionError, setSubscriptionError] = useState<string>()
+  const authUid = authUser?.uid ?? null
 
-  const load = useCallback(async () => {
-    const authUid = firebaseAuth.currentUser?.uid
-    setLoading(true)
-    setError(undefined)
-    setSubscription(null)
-    if (!authUid) {
-      setLoading(false)
-      return
-    }
-    try {
-      const nextSubscription = await getSubscriptionOverview()
-      if (firebaseAuth.currentUser?.uid === authUid) {
+  const loading = authUid !== null && (loadedUid !== authUid || requestLoading)
+  const currentSubscription = loadedUid === authUid ? subscription : null
+  const error = loadedUid === authUid ? subscriptionError : undefined
+
+  useEffect(() => {
+    const requestUid = firebaseAuth.currentUser?.uid
+    if (!requestUid) return
+
+    getSubscriptionOverview()
+      .then((nextSubscription) => {
+        if (firebaseAuth.currentUser?.uid !== requestUid) return
         setSubscription(nextSubscription)
-      }
-    } catch (reason) {
-      if (firebaseAuth.currentUser?.uid === authUid) {
-        setError(reason instanceof Error ? reason.message : "Não foi possível carregar sua assinatura.")
-      }
-    } finally {
-      if (firebaseAuth.currentUser?.uid === authUid) {
-        setLoading(false)
-      }
-    }
-  }, [])
-
-  useEffect(() => { void load() }, [authUser?.uid, load])
+        setSubscriptionError(undefined)
+        setLoadedUid(requestUid)
+      })
+      .catch((reason: unknown) => {
+        if (firebaseAuth.currentUser?.uid !== requestUid) return
+        setSubscriptionError(reason instanceof Error ? reason.message : "Não foi possível carregar sua assinatura.")
+        setLoadedUid(requestUid)
+      })
+      .finally(() => {
+        if (firebaseAuth.currentUser?.uid === requestUid) setRequestLoading(false)
+      })
+  }, [authUser?.uid])
 
   async function cancelRenewal() {
     setCancelling(true)
-    setError(undefined)
-    try { setSubscription(await cancelMercadoPagoSubscription()) } catch (reason) { setError(reason instanceof Error ? reason.message : "Não foi possível cancelar a renovação.") } finally { setCancelling(false) }
+    setSubscriptionError(undefined)
+    try { setSubscription(await cancelMercadoPagoSubscription()) } catch (reason) { setSubscriptionError(reason instanceof Error ? reason.message : "Não foi possível cancelar a renovação.") } finally { setCancelling(false) }
   }
 
   async function redeemTrial() {
     setRedeeming(true)
-    setError(undefined)
-    try { setSubscription(await redeemPremiumTrial()) } catch (reason) { setError(reason instanceof Error ? reason.message : "Não foi possível resgatar o teste grátis.") } finally { setRedeeming(false) }
+    setSubscriptionError(undefined)
+    try { setSubscription(await redeemPremiumTrial()) } catch (reason) { setSubscriptionError(reason instanceof Error ? reason.message : "Não foi possível resgatar o teste grátis.") } finally { setRedeeming(false) }
   }
 
   if (loading) return <Card><CardContent className="flex min-h-32 items-center justify-center gap-2 text-sm text-muted-foreground"><LoaderCircle className="size-4 animate-spin" />Carregando assinatura…</CardContent></Card>
 
-  const isPremium = subscription?.isPremium === true
-  const isTrial = subscription?.isTrial === true
-  const canRedeemTrial = subscription?.canRedeemTrial === true
-  const cancelled = subscription?.cancelAtPeriodEnd === true
-  const renewalDate = dateLabel(subscription?.expiresAt ?? null)
+  const isPremium = currentSubscription?.isPremium === true
+  const isTrial = currentSubscription?.isTrial === true
+  const canRedeemTrial = currentSubscription?.canRedeemTrial === true
+  const cancelled = currentSubscription?.cancelAtPeriodEnd === true
+  const renewalDate = dateLabel(currentSubscription?.expiresAt ?? null)
 
   if (compact) return <CompactPlanCard isPremium={isPremium} isTrial={isTrial} cancelled={cancelled} renewalDate={renewalDate} />
 
@@ -131,7 +126,7 @@ export function SubscriptionManagementCard({ compact = false }: { compact?: bool
                   ? renewalDate
                     ? `Período de teste liberado até ${renewalDate}.`
                     : "Período de teste de 3 dias ativo."
-                  : subscription?.provider
+                  : currentSubscription?.provider
                   ? cancelled
                     ? renewalDate
                       ? `Acesso ativo até ${renewalDate}.`
@@ -160,7 +155,7 @@ export function SubscriptionManagementCard({ compact = false }: { compact?: bool
                 />
               ) : (
                 <ManageActions
-                  provider={subscription?.provider}
+                  provider={currentSubscription?.provider}
                   cancelled={cancelled}
                   cancelling={cancelling}
                   onCancel={cancelRenewal}
@@ -174,8 +169,8 @@ export function SubscriptionManagementCard({ compact = false }: { compact?: bool
       <Card className="border-0 shadow-none"><CardContent className="grid gap-5 p-5 sm:grid-cols-2 lg:grid-cols-4">{benefits.map(({ icon: Icon, title, description }) => <div key={title} className="flex gap-3"><div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#f7f0e3] text-[#87631c] dark:bg-muted dark:text-foreground"><Icon className="size-5" /></div><div><h2 className="text-sm font-bold">{title}</h2><p className="mt-1 text-xs leading-5 text-muted-foreground">{description}</p></div></div>)}</CardContent></Card>
 
       <section className="grid gap-4 lg:grid-cols-[minmax(0,1.45fr)_minmax(280px,.8fr)]">
-        <Card className="shadow-none"><CardHeader><CardTitle>Compare os planos</CardTitle><CardDescription>Veja o que muda ao estudar com o Papirar Premium.</CardDescription></CardHeader><CardContent><div className="overflow-hidden rounded-xl border"><table className="w-full text-left text-xs sm:text-sm"><thead className="bg-muted/60"><tr><th className="p-3 font-semibold">Recursos</th><th className="p-3 text-center font-semibold">Grátis</th><th className="p-3 text-center font-semibold text-[#87631c]">Premium</th></tr></thead><tbody>{comparison.map(([label, free, premium]) => <tr key={label} className="border-t"><td className="p-3 text-muted-foreground">{label}</td><td className="p-3 text-center">{free ? <Check className="mx-auto size-4 text-muted-foreground" /> : "—"}</td><td className="p-3 text-center"><CheckCircle2 className="mx-auto size-4 text-[#b68829]" /></td></tr>)}</tbody></table></div></CardContent></Card>
-        <PlanStatusCard isPremium={isPremium} isTrial={isTrial} cancelled={cancelled} renewalDate={renewalDate} provider={subscription?.provider} cancelling={cancelling} onCancel={cancelRenewal} />
+        <Card className="shadow-none"><CardHeader><CardTitle>Compare os planos</CardTitle><CardDescription>Veja o que muda ao estudar com o Papirar Premium.</CardDescription></CardHeader><CardContent><div className="overflow-hidden rounded-xl border"><table className="w-full text-left text-xs sm:text-sm"><thead className="bg-muted/60"><tr><th className="p-3 font-semibold">Recursos</th><th className="p-3 text-center font-semibold">Grátis</th><th className="p-3 text-center font-semibold text-[#87631c]">Premium</th></tr></thead><tbody>{comparison.map(([label, free, premium]) => <tr key={label} className="border-t"><td className="p-3 text-muted-foreground">{label}</td><td className="p-3 text-center">{free ? <Check className="mx-auto size-4 text-muted-foreground" /> : "—"}</td><td className="p-3 text-center">{premium ? <CheckCircle2 className="mx-auto size-4 text-[#b68829]" /> : "—"}</td></tr>)}</tbody></table></div></CardContent></Card>
+        <PlanStatusCard isPremium={isPremium} isTrial={isTrial} cancelled={cancelled} renewalDate={renewalDate} provider={currentSubscription?.provider} cancelling={cancelling} onCancel={cancelRenewal} />
       </section>
       {error ? <p className="text-sm text-destructive" role="alert">{error}</p> : null}
     </div>

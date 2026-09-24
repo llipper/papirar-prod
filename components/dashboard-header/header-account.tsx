@@ -1,11 +1,10 @@
 "use client"
 
-import { useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { signOut } from "firebase/auth"
-import { User as UserIcon, CreditCard, Settings, LogOut } from "lucide-react"
+import { User as UserIcon, Settings, LogOut } from "lucide-react"
 
 import { firebaseAuth } from "@/lib/firebase/client"
 import { useAuthUser } from "@/lib/auth/use-auth-user"

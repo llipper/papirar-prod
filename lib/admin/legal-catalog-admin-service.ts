@@ -11,14 +11,17 @@ export async function currentFirebaseUserIsAdmin() {
   return Boolean(user && (await user.getIdTokenResult()).claims.admin === true)
 }
 
-function unavailable(): never { throw new Error(MIGRATION_MESSAGE) }
+function unavailable(...args: unknown[]): never {
+  void args
+  throw new Error(MIGRATION_MESSAGE)
+}
 export async function listAdminLaws(): Promise<AdminLaw[]> { return unavailable() }
-export async function updateAdminLaw(..._args: unknown[]): Promise<void> { return unavailable() }
-export async function updateAdminVersion(..._args: unknown[]): Promise<void> { return unavailable() }
-export async function listAdminLegalNodes(..._args: unknown[]): Promise<AdminLegalNode[]> { return unavailable() }
-export async function createAdminLegalNode(..._args: unknown[]): Promise<void> { return unavailable() }
-export async function createAdminLegalNodeContent(..._args: unknown[]): Promise<void> { return unavailable() }
-export async function updateAdminLegalNodeOrder(..._args: unknown[]): Promise<void> { return unavailable() }
-export async function revokeAdminLegalNode(..._args: unknown[]): Promise<void> { return unavailable() }
-export async function updateAdminLegalNode(..._args: unknown[]): Promise<void> { return unavailable() }
-export async function updateAdminLegalNodeContent(..._args: unknown[]): Promise<void> { return unavailable() }
+export async function updateAdminLaw(...args: unknown[]): Promise<void> { return unavailable(...args) }
+export async function updateAdminVersion(...args: unknown[]): Promise<void> { return unavailable(...args) }
+export async function listAdminLegalNodes(...args: unknown[]): Promise<AdminLegalNode[]> { return unavailable(...args) }
+export async function createAdminLegalNode(...args: unknown[]): Promise<void> { return unavailable(...args) }
+export async function createAdminLegalNodeContent(...args: unknown[]): Promise<void> { return unavailable(...args) }
+export async function updateAdminLegalNodeOrder(...args: unknown[]): Promise<void> { return unavailable(...args) }
+export async function revokeAdminLegalNode(...args: unknown[]): Promise<void> { return unavailable(...args) }
+export async function updateAdminLegalNode(...args: unknown[]): Promise<void> { return unavailable(...args) }
+export async function updateAdminLegalNodeContent(...args: unknown[]): Promise<void> { return unavailable(...args) }
