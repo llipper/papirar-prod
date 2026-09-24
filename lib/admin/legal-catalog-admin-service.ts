@@ -31,6 +31,24 @@ export type AdminLegalNode = {
   revoked_at?: string | null
 }
 
+export type LegalChangeNotification = {
+  id: string
+  law_id: string
+  law_title: string
+  law_acronym: string
+  change_type: "added" | "changed" | "revoked" | "published" | "law_revoked"
+  node_key: string | null
+  node_label: string
+  summary: string
+  created_at: string
+  is_read: boolean | number
+}
+
+export type LegalChangeNotificationPage = {
+  notifications: LegalChangeNotification[]
+  unread_count: number
+}
+
 const apiBase = (
   process.env.NEXT_PUBLIC_CLOUDFLARE_API_URL ??
   "https://papirar-api.papirar-api-worker.workers.dev"
@@ -61,6 +79,18 @@ export async function currentFirebaseUserIsAdmin() {
 
 export function listAdminLaws(): Promise<AdminLaw[]> {
   return adminRequest("/admin/catalog/laws")
+}
+
+export function listLegalChangeNotifications() {
+  return adminRequest<LegalChangeNotificationPage>("/notifications/legal-changes")
+}
+
+export function markLegalChangeNotificationRead(id: string) {
+  return adminRequest<void>(`/notifications/legal-changes/${encodeURIComponent(id)}/read`, { method: "POST" })
+}
+
+export function markAllLegalChangeNotificationsRead() {
+  return adminRequest<void>("/notifications/legal-changes/read-all", { method: "POST" })
 }
 
 export function updateAdminLaw(

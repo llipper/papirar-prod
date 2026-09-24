@@ -72,6 +72,8 @@ export default {
           throw new HttpError(403, "Acesso restrito a administradores.");
         return await adminCatalog(request, url, env, cors);
       }
+      if (url.pathname.startsWith("/notifications/legal-changes"))
+        return await legalChangeNotifications(request, url, identity.uid, env, cors);
       if (
         request.method === "POST" &&
         url.pathname === "/auth/email-verification"
@@ -464,7 +466,7 @@ async function adminCatalog(
     ).bind(versionId, lawId).first();
     if (!version) throw new HttpError(404, "Versão não encontrada.");
     const rows = await env.DB.prepare(
-      "SELECT n.payload_json AS node_json,n.node_key,n.node_type,n.number,n.label,nv.id,nv.sort_order,nv.payload_json AS version_json FROM legal_nodes n JOIN legal_node_versions nv ON nv.node_key=n.node_key WHERE n.law_id=? AND nv.law_version_id=? AND nv.revoked_at IS NULL ORDER BY nv.sort_order,n.node_key",
+      "SELECT n.payload_json AS node_json,n.node_key,n.node_type,n.number,n.label,nv.id,nv.sort_order,nv.revoked_at,nv.payload_json AS version_json FROM legal_nodes n JOIN legal_node_versions nv ON nv.node_key=n.node_key WHERE n.law_id=? AND nv.law_version_id=? AND nv.revoked_at IS NULL ORDER BY nv.sort_order,n.node_key",
     ).bind(lawId, versionId).all<{
       node_json: string;
       node_key: string;
@@ -473,6 +475,7 @@ async function adminCatalog(
       label: string | null;
       id: string;
       sort_order: number;
+      revoked_at: string | null;
       version_json: string;
     }>();
     return json(rows.results.map((row) => {
@@ -488,6 +491,7 @@ async function adminCatalog(
         epigraphe: typeof content.epigraphe === "string" ? content.epigraphe : "",
         text_content: typeof content.text_content === "string" ? content.text_content : "",
         sort_order: row.sort_order,
+        revoked_at: row.revoked_at,
       };
     }), 200, cors);
   }
@@ -520,10 +524,27 @@ async function adminCatalog(
     if (!versionLabel || !scopeKey || !["draft", "published", "archived"].includes(status))
       throw new HttpError(422, "Versão, escopo ou estado inválido.");
     const importedAt = new Date().toISOString();
+    const previous = await env.DB.prepare(
+      "SELECT status,law_id,version_label FROM law_versions WHERE id=?",
+    ).bind(versionId).first<{ status: string; law_id: string; version_label: string }>();
     const result = await env.DB.prepare(
       "UPDATE law_versions SET version_label=?,scope_key=?,status=?,payload_json=json_set(payload_json,'$.version_label',?,'$.source_file',?,'$.scope_key',?,'$.status',?,'$.is_complete',?,'$.imported_at',?) WHERE id=?",
     ).bind(versionLabel, scopeKey, status, versionLabel, sourceFile, scopeKey, status, isComplete ? 1 : 0, importedAt, versionId).run();
     if (!result.meta.changes) throw new HttpError(404, "Versão não encontrada.");
+    if (previous && previous.status !== status && (status === "published" || status === "archived")) {
+      const law = await env.DB.prepare("SELECT title,acronym FROM laws WHERE id=?")
+        .bind(previous.law_id).first<{ title: string; acronym: string | null }>();
+      const publishedVersion = status === "archived"
+        ? await env.DB.prepare("SELECT id FROM law_versions WHERE law_id=? AND status='published' LIMIT 1")
+          .bind(previous.law_id).first()
+        : null;
+      if (law && (status !== "archived" || !publishedVersion)) {
+        const changeType = status === "published" ? "published" : "law_revoked";
+        await env.DB.prepare(
+          "INSERT INTO legal_change_notifications(id,law_id,law_title,law_acronym,law_version_id,change_type,node_key,node_label,summary) VALUES(?,?,?,?,?,?,?,?,?)",
+        ).bind(crypto.randomUUID(), previous.law_id, law.title, law.acronym ?? "", versionId, changeType, null, versionLabel, status === "published" ? `${law.title} teve uma nova versão publicada (${versionLabel}).` : `${law.title} (${versionLabel}) foi revogada.`).run();
+      }
+    }
     return json({ ok: true }, 200, cors);
   }
 
@@ -556,8 +577,8 @@ async function adminCatalog(
     const nodeKey = field(body.node_key).trim();
     const sortOrder = Number(body.sort_order);
     const version = await env.DB.prepare(
-      "SELECT id,law_id FROM law_versions WHERE id=?",
-    ).bind(versionId).first<{ id: string; law_id: string }>();
+      "SELECT id,law_id,version_label,status FROM law_versions WHERE id=?",
+    ).bind(versionId).first<{ id: string; law_id: string; version_label: string; status: string }>();
     if (!version || !nodeKey || !Number.isInteger(sortOrder) || sortOrder < 0)
       throw new HttpError(422, "Os dados do conteúdo são inválidos.");
     const node = await env.DB.prepare(
@@ -576,6 +597,14 @@ async function adminCatalog(
     await env.DB.prepare(
       "INSERT INTO legal_node_versions(id,law_version_id,node_key,sort_order,published,revoked_at,payload_json) VALUES(?,?,?,?,1,NULL,?)",
     ).bind(content.id, versionId, nodeKey, sortOrder, JSON.stringify(content)).run();
+    if (version.status === "published" && (content.epigraphe.trim() || content.text_content.trim())) {
+      const metadata = await env.DB.prepare("SELECT number,label,node_type FROM legal_nodes WHERE node_key=?")
+        .bind(nodeKey).first<{ number: string | null; label: string | null; node_type: string }>();
+      await recordLegalChange(env, {
+        lawId: version.law_id, versionId, nodeKey, type: "added",
+        label: [metadata?.node_type || field(body.node_type).trim(), metadata?.number || metadata?.label].filter(Boolean).join(" ") || "dispositivo",
+      });
+    }
     return json({ ok: true }, 201, cors);
   }
 
@@ -597,6 +626,9 @@ async function adminCatalog(
   if (request.method === "PATCH" && contentMatch) {
     const id = decodeURIComponent(contentMatch[1]);
     const body = await adminJsonBody(request);
+    const previous = await env.DB.prepare(
+      "SELECT nv.law_version_id,nv.node_key,nv.payload_json,nv.revoked_at,lv.law_id,lv.version_label,lv.status,n.number,n.label,n.node_type FROM legal_node_versions nv JOIN law_versions lv ON lv.id=nv.law_version_id JOIN legal_nodes n ON n.node_key=nv.node_key WHERE nv.id=?",
+    ).bind(id).first<{ law_version_id: string; node_key: string; payload_json: string; revoked_at: string | null; law_id: string; version_label: string; status: string; number: string | null; label: string | null; node_type: string }>();
     const parts: string[] = [];
     const values: unknown[] = [];
     for (const key of ["epigraphe", "text_content"] as const) {
@@ -633,10 +665,68 @@ async function adminCatalog(
       `UPDATE legal_node_versions SET ${assignments.join(",")} WHERE id=?`,
     ).bind(...bindValues).run();
     if (!result.meta.changes) throw new HttpError(404, "Conteúdo não encontrado.");
+    if (previous?.status === "published") {
+      const before = parseJsonObject(previous.payload_json);
+      const changedText = (typeof body.text_content === "string" && body.text_content !== before.text_content) ||
+        (typeof body.epigraphe === "string" && body.epigraphe !== before.epigraphe);
+      const revoked = typeof body.revoked_at === "string" && body.revoked_at !== previous.revoked_at;
+      const added = !revoked && changedText &&
+        !String(before.epigraphe ?? "").trim() && !String(before.text_content ?? "").trim() &&
+        Boolean(String(body.epigraphe ?? "").trim() || String(body.text_content ?? "").trim());
+      if (revoked || changedText) await recordLegalChange(env, {
+        lawId: previous.law_id, versionId: previous.law_version_id, nodeKey: previous.node_key,
+        type: revoked ? "revoked" : added ? "added" : "changed",
+        label: [previous.node_type, previous.number || previous.label].filter(Boolean).join(" "),
+      });
+    }
     return json({ ok: true }, 200, cors);
   }
 
   throw new HttpError(404, "Rota administrativa não encontrada.");
+}
+
+async function recordLegalChange(env: WorkerEnv, input: {
+  lawId: string; versionId: string; nodeKey: string; type: "added" | "changed" | "revoked";
+  label: string;
+}) {
+  const data = await env.DB.prepare("SELECT title,acronym FROM laws WHERE id=?")
+    .bind(input.lawId).first<{ title: string; acronym: string | null }>();
+  const version = await env.DB.prepare("SELECT version_label FROM law_versions WHERE id=?")
+    .bind(input.versionId).first<{ version_label: string }>();
+  if (!data || !version) return;
+  const verb = input.type === "added" ? "foi adicionado" : input.type === "revoked" ? "foi revogado" : "foi alterado";
+  await env.DB.prepare(
+    "INSERT INTO legal_change_notifications(id,law_id,law_title,law_acronym,law_version_id,change_type,node_key,node_label,summary) VALUES(?,?,?,?,?,?,?,?,?)",
+  ).bind(crypto.randomUUID(), input.lawId, data.title, data.acronym ?? "", input.versionId, input.type, input.nodeKey, input.label, `${data.acronym || data.title}: ${verb} o ${input.label}.` + (input.type === "changed" || input.type === "added" ? ` Versão ${version.version_label}.` : "")).run();
+}
+
+async function legalChangeNotifications(
+  request: Request, url: URL, uid: string, env: WorkerEnv, cors: Record<string, string>,
+) {
+  if (request.method === "GET" && url.pathname === "/notifications/legal-changes") {
+    const rows = await env.DB.prepare(
+      "SELECT n.id,n.law_id,n.law_title,n.law_acronym,n.change_type,n.node_key,n.node_label,n.summary,n.created_at,CASE WHEN r.notification_id IS NULL THEN 0 ELSE 1 END AS is_read FROM legal_change_notifications n LEFT JOIN user_legal_notification_reads r ON r.notification_id=n.id AND r.uid=? ORDER BY n.created_at DESC LIMIT 30",
+    ).bind(uid).all<{ id: string; law_id: string; law_title: string; law_acronym: string; change_type: string; node_key: string | null; node_label: string; summary: string; created_at: string; is_read: number }>();
+    const unread = await env.DB.prepare(
+      "SELECT COUNT(*) AS count FROM legal_change_notifications n LEFT JOIN user_legal_notification_reads r ON r.notification_id=n.id AND r.uid=? WHERE r.notification_id IS NULL",
+    ).bind(uid).first<{ count: number }>();
+    return json({ notifications: rows.results, unread_count: unread?.count ?? 0 }, 200, cors);
+  }
+  const match = url.pathname.match(/^\/notifications\/legal-changes\/([^/]+)\/read$/);
+  if (request.method === "POST" && match) {
+    const id = decodeURIComponent(match[1]);
+    await env.DB.prepare(
+      "INSERT OR IGNORE INTO user_legal_notification_reads(uid,notification_id) SELECT ?,id FROM legal_change_notifications WHERE id=?",
+    ).bind(uid, id).run();
+    return json({ ok: true }, 200, cors);
+  }
+  if (request.method === "POST" && url.pathname === "/notifications/legal-changes/read-all") {
+    await env.DB.prepare(
+      "INSERT OR IGNORE INTO user_legal_notification_reads(uid,notification_id) SELECT ?,id FROM legal_change_notifications",
+    ).bind(uid).run();
+    return json({ ok: true }, 200, cors);
+  }
+  throw new HttpError(404, "Rota de notificações não encontrada.");
 }
 
 async function adminJsonBody(request: Request) {
