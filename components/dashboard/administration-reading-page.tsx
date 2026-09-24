@@ -15,6 +15,13 @@ import { useRouter } from "next/navigation"
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { DashboardShell } from "@/components/dashboard/dashboard-shell"
@@ -46,6 +53,15 @@ const NODE_TYPES = [
 ] as const
 
 const ADMIN_NODE_PAGE_SIZE = 60
+
+type NodeType = (typeof NODE_TYPES)[number][0]
+type NodePlacement = "above" | "below" | "child"
+
+const PLACEMENT_LABELS: Record<NodePlacement, string> = {
+  above: "Acima",
+  below: "Abaixo",
+  child: "Filho",
+}
 
 function newNodeKey(lawId: string, nodeType: string) {
   const suffix =
@@ -82,9 +98,38 @@ type AdminLegalNodeEditorProps = {
   onMove: (index: number, direction: -1 | 1) => void
   onAdd: (
     node: AdminLegalNode,
-    placement: "above" | "below" | "child",
+    placement: NodePlacement,
+    nodeType: NodeType,
   ) => void
   onRevoke: (node: AdminLegalNode) => void
+}
+
+function AddNodeMenu({
+  label,
+  disabled,
+  onSelect,
+}: {
+  label: string
+  disabled: boolean
+  onSelect: (nodeType: NodeType) => void
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="sm" disabled={disabled}>
+          <Plus /> {label}
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="min-w-44">
+        <DropdownMenuLabel>Tipo do elemento</DropdownMenuLabel>
+        {NODE_TYPES.map(([value, typeLabel]) => (
+          <DropdownMenuItem key={value} onSelect={() => onSelect(value)}>
+            {typeLabel}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
 }
 
 const AdminLegalNodeEditor = memo(function AdminLegalNodeEditor({
@@ -110,7 +155,7 @@ const AdminLegalNodeEditor = memo(function AdminLegalNodeEditor({
   }
 
   async function save() {
-    if (saving || operationInProgress || node.id.startsWith("new-")) return
+    if (saving || operationInProgress) return
     setSaving(true)
     try {
       await onSave(node, draft)
@@ -149,7 +194,7 @@ const AdminLegalNodeEditor = memo(function AdminLegalNodeEditor({
             size="icon-sm"
             title="Salvar elemento"
             onClick={() => void save()}
-            disabled={operationInProgress || saving || node.id.startsWith("new-")}
+            disabled={operationInProgress || saving}
           >
             <Save />
           </Button>
@@ -196,30 +241,14 @@ const AdminLegalNodeEditor = memo(function AdminLegalNodeEditor({
         onChange={(event) => changeDraft({ text_content: event.target.value })}
       />
       <div className="mt-4 flex flex-wrap items-center gap-2">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => onAdd(node, "above")}
-          disabled={operationInProgress || saving}
-        >
-          <Plus /> Acima
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => onAdd(node, "below")}
-          disabled={operationInProgress || saving}
-        >
-          <Plus /> Abaixo
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => onAdd(node, "child")}
-          disabled={operationInProgress || saving}
-        >
-          <Plus /> Filho
-        </Button>
+        {(["above", "below", "child"] as const).map((placement) => (
+          <AddNodeMenu
+            key={placement}
+            label={PLACEMENT_LABELS[placement]}
+            disabled={operationInProgress || saving}
+            onSelect={(nodeType) => onAdd(node, placement, nodeType)}
+          />
+        ))}
         {saving ? (
           <span className="text-xs text-muted-foreground">Salvando…</span>
         ) : null}
@@ -241,7 +270,6 @@ export function AdministrationReadingPage({ bookId }: { bookId: string }) {
   const [saving, setSaving] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [feedback, setFeedback] = useState<string | null>(null)
-  const [newType, setNewType] = useState("artigo")
 
   useEffect(() => {
     if (isAdmin === null) {
@@ -294,10 +322,34 @@ export function AdministrationReadingPage({ bookId }: { bookId: string }) {
 
   const saveNode = useCallback(
     async (node: AdminLegalNode, draft: AdminLegalNodeDraft) => {
-      if (node.id.startsWith("new-")) return
       const updatedNode = { ...node, ...draft }
       setFeedback(null)
       try {
+        if (node.id.startsWith("new-")) {
+          if (!record || !versionId) return
+          const result = await createAdminLegalNode({
+            law_id: record.law_id,
+            law_version_id: versionId,
+            node_key: node.node_key,
+            parent_key: node.parent_key,
+            node_type: node.node_type,
+            number: draft.number || null,
+            label: draft.label || null,
+            epigraphe: draft.epigraphe,
+            text_content: draft.text_content,
+            sort_order: node.sort_order,
+          })
+          setNodes((current) => current.map((item) =>
+            item.node_key === node.node_key
+              ? { ...updatedNode, id: result.id }
+              : item,
+          ))
+          setNextOffset((currentOffset) =>
+            currentOffset === null ? null : currentOffset + 1,
+          )
+          setFeedback(`${draft.number || node.node_type} adicionado e salvo.`)
+          return
+        }
         await Promise.all([
           updateAdminLegalNode(updatedNode),
           updateAdminLegalNodeContent(updatedNode),
@@ -314,7 +366,7 @@ export function AdministrationReadingPage({ bookId }: { bookId: string }) {
         )
       }
     },
-    [],
+    [record, versionId],
   )
 
   async function moveNode(index: number, direction: -1 | 1) {
@@ -344,12 +396,13 @@ export function AdministrationReadingPage({ bookId }: { bookId: string }) {
     }
   }
 
-  async function addNode(
+  function addNode(
     target: AdminLegalNode | null,
-    placement: "above" | "below" | "child"
+    placement: NodePlacement,
+    nodeType: NodeType,
   ) {
     if (!versionId || !record || saving) return
-    const key = newNodeKey(record.law_id, newType)
+    const key = newNodeKey(record.law_id, nodeType)
     const parentKey =
       placement === "child"
         ? (target?.node_key ?? null)
@@ -370,25 +423,7 @@ export function AdministrationReadingPage({ bookId }: { bookId: string }) {
       }
       insertAt = lastDescendantIndex + 1
     }
-    let following = nodes[insertAt] ?? null
-    if (!following && nextOffset !== null) {
-      try {
-        const adjacentPage = await listAdminLegalNodesPage(
-          record.law_id,
-          versionId,
-          nodes.length,
-          1,
-        )
-        following = adjacentPage.nodes[0] ?? null
-      } catch (reason) {
-        setFeedback(
-          reason instanceof Error
-            ? reason.message
-            : "Não foi possível verificar a posição do próximo dispositivo.",
-        )
-        return
-      }
-    }
+    const following = nodes[insertAt] ?? null
     const previous = nodes[insertAt - 1] ?? null
     const sortOrder = previous && following
       ? (previous.sort_order + following.sort_order) / 2
@@ -401,7 +436,7 @@ export function AdministrationReadingPage({ bookId }: { bookId: string }) {
       id: `new-${key}`,
       node_key: key,
       parent_key: parentKey,
-      node_type: newType,
+      node_type: nodeType,
       number: "",
       label: "",
       epigraphe: "",
@@ -411,39 +446,7 @@ export function AdministrationReadingPage({ bookId }: { bookId: string }) {
     const next = [...nodes]
     next.splice(Math.max(0, insertAt), 0, created)
     setNodes(next)
-    setSaving("__new__")
-    try {
-      const result = await createAdminLegalNode({
-        law_id: record.law_id,
-        law_version_id: versionId,
-        node_key: key,
-        parent_key: parentKey,
-        node_type: newType,
-        number: null,
-        label: "",
-        epigraphe: "",
-        text_content: "",
-        sort_order: sortOrder,
-      })
-      setNodes((current) => current.map((node) =>
-        node.node_key === key ? { ...node, id: result.id } : node
-      ))
-      setNextOffset((currentOffset) =>
-        currentOffset === null ? null : currentOffset + 1,
-      )
-      setFeedback("Novo elemento adicionado. Edite o texto e salve.")
-    } catch (reason) {
-      setNodes((current) =>
-        current.filter((node) => node.node_key !== key),
-      )
-      setFeedback(
-        reason instanceof Error
-          ? reason.message
-          : "Não foi possível adicionar o elemento."
-      )
-    } finally {
-      setSaving(null)
-    }
+    setFeedback(`Rascunho de ${NODE_TYPES.find(([value]) => value === nodeType)?.[1] ?? nodeType} criado. Preencha e clique em salvar.`)
   }
 
   async function loadMoreNodes() {
@@ -471,21 +474,32 @@ export function AdministrationReadingPage({ bookId }: { bookId: string }) {
 
   async function revokeNode(node: AdminLegalNode) {
     if (saving) return
-    setSaving(node.node_key)
+    if (node.id.startsWith("new-")) {
+      setNodes((current) => current.filter((item) => item.node_key !== node.node_key))
+      setFeedback("Rascunho descartado.")
+      return
+    }
+    const originalIndex = nodes.findIndex((item) => item.node_key === node.node_key)
+    setNodes((current) => current.filter((item) => item.node_key !== node.node_key))
+    setFeedback(`${node.number || node.node_type} removido. Confirmando…`)
     try {
       await revokeAdminLegalNode(node.id)
-      setNodes((current) =>
-        current.filter((item) => item.node_key !== node.node_key)
+      setNextOffset((currentOffset) =>
+        currentOffset === null ? null : Math.max(0, currentOffset - 1),
       )
       setFeedback("Elemento removido do texto.")
     } catch (reason) {
+      setNodes((current) => {
+        if (current.some((item) => item.node_key === node.node_key)) return current
+        const restored = [...current]
+        restored.splice(Math.max(0, Math.min(originalIndex, restored.length)), 0, node)
+        return restored
+      })
       setFeedback(
         reason instanceof Error
           ? reason.message
           : "Não foi possível remover o elemento."
       )
-    } finally {
-      setSaving(null)
     }
   }
 
@@ -595,25 +609,11 @@ export function AdministrationReadingPage({ bookId }: { bookId: string }) {
             próprio elemento; use Salvar, mover, inserir ou remover.
           </p>
           <div className="mt-4 flex flex-wrap items-center gap-2">
-            <select
-              value={newType}
-              onChange={(event) => setNewType(event.target.value)}
-              className="h-9 rounded-xl border bg-background px-3 text-sm"
-            >
-              {NODE_TYPES.map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </select>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => void addNode(null, "below")}
+            <AddNodeMenu
+              label="Adicionar no início"
               disabled={Boolean(saving)}
-            >
-              <Plus /> Adicionar no início
-            </Button>
+              onSelect={(nodeType) => addNode(null, "below", nodeType)}
+            />
           </div>
         </div>
         <div>

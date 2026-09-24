@@ -662,36 +662,34 @@ async function adminCatalog(
     const previous = await env.DB.prepare(
       "SELECT nv.law_version_id,nv.node_key,nv.payload_json,nv.revoked_at,lv.law_id,lv.version_label,lv.status,n.number,n.label,n.node_type FROM legal_node_versions nv JOIN law_versions lv ON lv.id=nv.law_version_id JOIN legal_nodes n ON n.node_key=nv.node_key WHERE nv.id=?",
     ).bind(id).first<{ law_version_id: string; node_key: string; payload_json: string; revoked_at: string | null; law_id: string; version_label: string; status: string; number: string | null; label: string | null; node_type: string }>();
-    const parts: string[] = [];
-    const values: unknown[] = [];
+    if (!previous) throw new HttpError(404, "Conteúdo não encontrado.");
+    const before = parseJsonObject(previous.payload_json);
+    const contentPatch: Record<string, unknown> = {};
     for (const key of ["epigraphe", "text_content"] as const) {
       if (typeof body[key] === "string") {
         if (body[key].length > 100_000) throw new HttpError(413, "O conteúdo excede o limite permitido.");
-        parts.push(`'$.${key}',?`);
-        values.push(body[key]);
+        contentPatch[key] = body[key];
       }
     }
     if (body.revoked_at === null || typeof body.revoked_at === "string") {
-      parts.push("'$.revoked_at',?");
-      values.push(body.revoked_at);
+      contentPatch.revoked_at = body.revoked_at;
     }
     if (body.sort_order !== undefined) {
       const order = Number(body.sort_order);
       if (!Number.isFinite(order) || Math.abs(order) > 2_000_000_000)
         throw new HttpError(422, "A ordem do elemento é inválida.");
-      parts.push("'$.sort_order',?");
-      values.push(order);
+      contentPatch.sort_order = order;
     }
-    if (!parts.length) throw new HttpError(422, "Nenhuma alteração informada.");
+    if (!Object.keys(contentPatch).length) throw new HttpError(422, "Nenhuma alteração informada.");
     const assignments = [
       ...(body.sort_order !== undefined ? ["sort_order=?"] : []),
       ...(body.revoked_at === null || typeof body.revoked_at === "string" ? ["revoked_at=?"] : []),
-      `payload_json=json_set(payload_json,${parts.join(",")})`,
+      "payload_json=?",
     ];
     const bindValues = [
       ...(body.sort_order !== undefined ? [Number(body.sort_order)] : []),
       ...(body.revoked_at === null || typeof body.revoked_at === "string" ? [body.revoked_at] : []),
-      ...values,
+      JSON.stringify({ ...before, ...contentPatch }),
       id,
     ];
     const result = await env.DB.prepare(
@@ -699,7 +697,6 @@ async function adminCatalog(
     ).bind(...bindValues).run();
     if (!result.meta.changes) throw new HttpError(404, "Conteúdo não encontrado.");
     if (previous?.status === "published") {
-      const before = parseJsonObject(previous.payload_json);
       const changedText = (typeof body.text_content === "string" && body.text_content !== before.text_content) ||
         (typeof body.epigraphe === "string" && body.epigraphe !== before.epigraphe);
       const revoked = typeof body.revoked_at === "string" && body.revoked_at !== previous.revoked_at;

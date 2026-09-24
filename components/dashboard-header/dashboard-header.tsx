@@ -11,12 +11,8 @@ import { HeaderThemeToggle } from "./header-theme-toggle"
 
 export function DashboardHeader() {
   return (
-    <>
-      {/* =====================================================
-          MOBILE
-          Logo à esquerda + notificações + avatar à direita
-      ===================================================== */}
-      <div className="flex w-full items-center justify-between px-4 xl:hidden">
+    <div className="flex w-full items-center px-4 xl:w-auto xl:px-0">
+      <div className="flex items-center xl:hidden">
         <Link
           href="/dashboard"
           aria-label="Ir para Home"
@@ -32,23 +28,14 @@ export function DashboardHeader() {
           </span>
         </Link>
 
-        <div className="flex items-center gap-2">
-          <HeaderNotifications />
-
-          <HeaderAccount />
-        </div>
       </div>
 
-      {/* =====================================================
-          DESKTOP
-          Mantém exatamente a estrutura atual
-      ===================================================== */}
-      <div className="ml-auto hidden items-center gap-2 pr-4 xl:flex">
-        <HeaderSearch />
-        <HeaderAccount />
-        <HeaderNotifications />
-        <HeaderThemeToggle />
+      <div className="ml-auto flex items-center gap-2 xl:pr-4">
+        <div className="order-1 hidden xl:block"><HeaderSearch /></div>
+        <div className="order-2 xl:order-3"><HeaderNotifications /></div>
+        <div className="order-3 xl:order-2"><HeaderAccount /></div>
+        <div className="order-4 hidden xl:block"><HeaderThemeToggle /></div>
       </div>
-    </>
+    </div>
   )
 }

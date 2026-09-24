@@ -60,6 +60,11 @@ const apiBase = (
 ).replace(/\/$/, "")
 
 const legacyNodeCache = new Map<string, AdminLegalNode[]>()
+let legalNotificationsRequest: Promise<LegalChangeNotificationPage> | null = null
+let legalNotificationsCache: {
+  expiresAt: number
+  value: LegalChangeNotificationPage
+} | null = null
 
 async function adminRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
   const user = await waitForBrowserSession()
@@ -100,7 +105,20 @@ export function listAdminLaws(): Promise<AdminLaw[]> {
 }
 
 export function listLegalChangeNotifications() {
-  return adminRequest<LegalChangeNotificationPage>("/notifications/legal-changes")
+  if (legalNotificationsCache && legalNotificationsCache.expiresAt > Date.now()) {
+    return Promise.resolve(legalNotificationsCache.value)
+  }
+  if (legalNotificationsRequest) return legalNotificationsRequest
+
+  legalNotificationsRequest = adminRequest<LegalChangeNotificationPage>("/notifications/legal-changes")
+    .then((value) => {
+      legalNotificationsCache = { value, expiresAt: Date.now() + 15_000 }
+      return value
+    })
+    .finally(() => {
+      legalNotificationsRequest = null
+    })
+  return legalNotificationsRequest
 }
 
 export function markLegalChangeNotificationRead(id: string) {
