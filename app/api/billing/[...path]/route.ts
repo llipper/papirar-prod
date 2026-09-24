@@ -1,9 +1,26 @@
 import { NextResponse } from "next/server"
 
-// This is a public Worker origin, not a secret. Keeping a single canonical
-// endpoint prevents a stale Vercel environment variable from sending billing
-// calls to a retired API deployment.
-const workerUrl = "https://papirar-api.papirar-api-worker.workers.dev"
+// Local checkout must never mutate production billing state. In development,
+// use a loopback Worker (with test credentials and its own local D1); production
+// always uses the canonical deployed Worker.
+function getWorkerUrl() {
+  if (process.env.NODE_ENV === "development") {
+    const localUrl =
+      process.env.PAPIRAR_BILLING_WORKER_URL ?? "http://127.0.0.1:8787"
+    try {
+      const parsed = new URL(localUrl)
+      if (
+        parsed.protocol !== "http:" ||
+        !["localhost", "127.0.0.1", "[::1]", "::1"].includes(parsed.hostname)
+      )
+        return null
+      return parsed.origin
+    } catch {
+      return null
+    }
+  }
+  return "https://papirar-api.papirar-api-worker.workers.dev"
+}
 
 const allowedPaths = new Set([
   "subscription",
@@ -36,6 +53,17 @@ async function proxyBillingRequest(request: Request, context: RouteContext) {
     return NextResponse.json(
       { error: "Autenticação necessária." },
       { status: 401 }
+    )
+  }
+
+  const workerUrl = getWorkerUrl()
+  if (!workerUrl) {
+    return NextResponse.json(
+      {
+        error:
+          "Checkout local bloqueado com segurança. Configure um Worker local usando credenciais de teste do Mercado Pago.",
+      },
+      { status: 503 }
     )
   }
 

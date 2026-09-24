@@ -4,6 +4,13 @@ import { useEffect, useId, useRef, useState } from "react"
 import { LoaderCircle, LockKeyhole, RotateCcw } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { firebaseAuth } from "@/lib/firebase/client"
 
 type CheckoutIntent = {
@@ -25,7 +32,7 @@ type MercadoPagoInstance = {
         callbacks: {
           onReady: () => void
           onSubmit: (data: CardFormData) => Promise<void>
-          onError: () => void
+          onError: (error: unknown) => void
         }
       }
     ) => Promise<BrickController>
@@ -89,6 +96,12 @@ export function MercadoPagoCheckoutButton({
   const [submitted, setSubmitted] = useState(false)
   const [pending, setPending] = useState(false)
 
+  useEffect(() => {
+    if (open) return
+    brickController.current?.unmount()
+    brickController.current = null
+  }, [open])
+
   useEffect(() => () => brickController.current?.unmount(), [])
 
   async function startCheckout() {
@@ -130,11 +143,19 @@ export function MercadoPagoCheckoutButton({
         .create("cardPayment", brickId, {
           initialization: {
             amount: payload.amount,
+            // The Worker chooses the sandbox payer email only when explicitly
+            // configured for local testing; this same email is bound to D1 and
+            // sent when it creates the preapproval.
             payer: { email: payload.payerEmail },
           },
           callbacks: {
             onReady: () => setLoading(false),
-            onError: () => {
+            onError: (brickError: unknown) => {
+              const diagnostic =
+                brickError instanceof Error
+                  ? { name: brickError.name, message: brickError.message }
+                  : { message: String(brickError).slice(0, 240) }
+              console.error("[mercado-pago-brick] component error", diagnostic)
               setLoading(false)
               setError(
                 "O formulário de pagamento não carregou. Tente novamente."
@@ -199,6 +220,14 @@ export function MercadoPagoCheckoutButton({
         })
       setIntent(payload)
     } catch (checkoutError) {
+      console.error("[mercado-pago-brick] checkout initialization failed", {
+        name:
+          checkoutError instanceof Error ? checkoutError.name : "UnknownError",
+        message:
+          checkoutError instanceof Error
+            ? checkoutError.message.slice(0, 240)
+            : "Não foi possível iniciar o Brick.",
+      })
       setError(
         checkoutError instanceof Error
           ? checkoutError.message
@@ -209,42 +238,50 @@ export function MercadoPagoCheckoutButton({
   }
 
   return (
-    <div className="grid gap-3">
-      {!open ? (
-        <Button
-          className={className ?? "h-12 w-full rounded-full"}
-          onClick={startCheckout}
-          disabled={loading}
-        >
-          {loading ? (
-            <>
-              <LoaderCircle className="size-4 animate-spin" /> Preparando
-              pagamento seguro…
-            </>
-          ) : (
-            label
-          )}
-        </Button>
-      ) : null}
-      {open ? (
-        <div className="grid gap-4 rounded-2xl border bg-card p-4 sm:p-6">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <h3 className="font-semibold">Pagamento seguro</h3>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Papirar Premium · R$ 24,99 por mês
-              </p>
-            </div>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <div className="grid gap-3">
+        {!open ? (
+          <Button
+            className={className ?? "h-12 w-full rounded-full"}
+            onClick={startCheckout}
+            disabled={loading}
+          >
+            {loading ? (
+              <>
+                <LoaderCircle className="size-4 animate-spin" /> Preparando
+                pagamento seguro…
+              </>
+            ) : (
+              label
+            )}
+          </Button>
+        ) : null}
+      </div>
+      <DialogContent
+        showCloseButton
+        className="top-auto bottom-0 left-1/2 max-h-[92dvh] w-full max-w-none translate-x-[-50%] translate-y-0 gap-0 overflow-y-auto rounded-b-none rounded-t-3xl p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:top-1/2 sm:bottom-auto sm:w-[calc(100%-2rem)] sm:max-w-3xl sm:-translate-y-1/2 sm:rounded-3xl sm:p-6"
+      >
+        <div
+          className="mx-auto mb-4 h-1.5 w-10 rounded-full bg-muted sm:hidden"
+          aria-hidden="true"
+        />
+        <DialogHeader className="mb-4 pr-8 text-left sm:mb-5">
+          <DialogTitle className="flex items-center gap-2">
             <LockKeyhole
-              className="mt-1 size-4 shrink-0 text-muted-foreground"
+              className="size-4 text-muted-foreground"
               aria-hidden="true"
             />
-          </div>
+            Pagamento seguro
+          </DialogTitle>
+          <DialogDescription>
+            Papirar Premium · R$ 24,99 por mês
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-4">
           <p className="text-xs leading-5 text-muted-foreground">
-            A assinatura custa R$ 24,99 por mês. A primeira parcela pode ser
-            processada em até cerca de uma hora após autorizar. O Mercado Pago
-            também pode fazer uma validação temporária do cartão e estorná-la
-            após a verificação.
+            A primeira parcela pode ser processada em até cerca de uma hora
+            após autorizar. O Mercado Pago também pode fazer uma validação
+            temporária do cartão e estorná-la após a verificação.
           </p>
           {loading ? (
             <div className="flex items-center justify-center gap-2 py-5 text-sm text-muted-foreground">
@@ -254,7 +291,7 @@ export function MercadoPagoCheckoutButton({
           ) : null}
           <div
             id={brickId}
-            className={loading || submitted || pending ? "hidden" : "min-h-24"}
+            className={submitted || pending ? "hidden" : "min-h-24"}
           />
           {submitted ? (
             <p className="text-sm font-medium text-emerald-700" role="status">
@@ -284,7 +321,7 @@ export function MercadoPagoCheckoutButton({
             armazenados pelo Papirar.
           </p>
         </div>
-      ) : null}
-    </div>
+      </DialogContent>
+    </Dialog>
   )
 }

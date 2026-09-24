@@ -68,5 +68,5 @@ export function AssinarTrialAction() {
     return <div className="grid gap-3"><Button type="button" onClick={startTrial} disabled={redeeming} className="h-12 rounded-full">{redeeming ? "Ativando teste grátis…" : "Ativar 3 dias grátis sem cartão"}</Button><p className="text-center text-xs text-neutral-500">Sem cartão e sem cobrança automática. Ao fim dos 3 dias, sua conta volta ao plano grátis, a menos que você escolha assinar.</p>{redeemError ? <p className="text-center text-sm text-red-700" role="alert">{redeemError}</p> : null}</div>
   }
 
-  return <div className="grid gap-3"><MercadoPagoCheckoutButton label="Assinar por R$ 24,99/mês" /><p className="text-center text-xs text-neutral-500">O período grátis já foi usado ou não está disponível para esta conta. A cobrança recorrente começa ao confirmar a assinatura no Mercado Pago.</p></div>
+  return <div className="grid gap-3"><MercadoPagoCheckoutButton label="Assinar por R$ 24,99/mês" /><p className="text-center text-xs text-neutral-500">O teste grátis de 3 dias é ativado sem cartão quando disponível. Esta opção inicia a assinatura recorrente de R$ 24,99/mês ao confirmar no Mercado Pago.</p></div>
 }
