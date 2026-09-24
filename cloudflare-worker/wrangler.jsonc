@@ -1,0 +1,43 @@
+{
+	"$schema": "./node_modules/wrangler/config-schema.json",
+	"name": "papirar-api",
+	"account_id": "23598691d97b654c52e9842212e7a813",
+	"main": "src/index.ts",
+	"compatibility_date": "2026-09-12",
+	"compatibility_flags": [
+		"nodejs_compat"
+	],
+	"vars": {
+		"FIREBASE_PROJECT_ID": "papirar-72bc6",
+		"INITIAL_ADMIN_EMAIL": "admin@papirar.com",
+		"INITIAL_ADMIN_VERIFICATION_RECIPIENT": "noreply@papirar.com",
+		"FIREBASE_WEB_API_KEY": "AIzaSyAoG01jULVHKnvFHa1kaP7dowUE1f_9b9E",
+		"ALLOWED_ORIGINS": "http://localhost:3000,http://192.168.18.11:3000,https://papirar.com,https://www.papirar.com,https://papirar.com.br",
+		"VERCEL_MAILER_URL": "https://www.papirar.com/api/internal/send-email",
+		"MERCADO_PAGO_PUBLIC_KEY": "APP_USR-a0d363e3-faa0-42e1-b0b3-45d26dfd00cf",
+		"GOOGLE_PLAY_PACKAGE_NAME": "com.papirar.app",
+		"GOOGLE_PLAY_PREMIUM_PRODUCT_ID": "papirar_premium_monthly"
+	},
+	"r2_buckets": [
+		{
+			"binding": "ASSETS",
+			"bucket_name": "papirar-assets"
+		},
+		{
+			"binding": "AUDIO_ASSETS",
+			"bucket_name": "papirar-audios"
+		}
+	],
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "papirar-api",
+			"database_id": "f549633d-ab19-46bc-9cca-fc4c50ee68e0",
+			"migrations_dir": "migrations"
+		}
+	],
+	"observability": {
+		"enabled": true,
+		"head_sampling_rate": 1
+	}
+}
