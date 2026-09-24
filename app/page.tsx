@@ -87,7 +87,7 @@ const structuredData = {
           name: "Como funciona a assinatura do Papirar Premium?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "O Papirar Premium custa R$ 24,99 por mês após 3 dias de teste gratuito. O plano inclui acesso aos áudios do catálogo; a assinatura pode ser cancelada no painel.",
+            text: "O Papirar Premium custa R$ 24,99 por mês. Novas contas elegíveis podem ativar 3 dias grátis sem cartão e sem cobrança automática; o teste termina e a conta volta ao plano grátis, a menos que a pessoa escolha assinar.",
           },
         },
       ],

@@ -26,7 +26,6 @@ const ALLOWED_HOSTS = new Set([
   "localhost",
 ])
 
-
 function generateRequestId(): string {
   return crypto.randomUUID()
 }
@@ -39,16 +38,16 @@ function contentSecurityPolicy(nonce: string): string {
   const isDevelopment = process.env.NODE_ENV !== "production"
   return [
     "default-src 'self'",
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isDevelopment ? " 'unsafe-eval'" : ""} https://apis.google.com https://www.gstatic.com`,
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isDevelopment ? " 'unsafe-eval'" : ""} https://apis.google.com https://www.gstatic.com https://sdk.mercadopago.com`,
     "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: blob: https://*.googleusercontent.com https://*.r2.dev https://*.r2.cloudflarestorage.com",
+    "img-src 'self' data: blob: https://*.googleusercontent.com https://*.r2.dev https://*.r2.cloudflarestorage.com https://*.mlstatic.com",
     "font-src 'self' data:",
-    "connect-src 'self' https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.workers.dev",
+    "connect-src 'self' https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.workers.dev https://api.mercadopago.com https://*.mercadopago.com https://*.mercadolibre.com",
     "media-src 'self' blob: https://*.r2.dev https://*.r2.cloudflarestorage.com https://*.workers.dev",
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",
-    "frame-src 'self' https://accounts.google.com https://*.firebaseapp.com https://auth.papirar.com",
+    "frame-src 'self' https://accounts.google.com https://*.firebaseapp.com https://auth.papirar.com https://*.mercadopago.com https://*.mercadolibre.com",
     "frame-ancestors 'none'",
   ].join("; ")
 }
@@ -103,7 +102,11 @@ export function proxy(req: NextRequest) {
     )
 
     // Para scanners e honeypots: retorna 404 genérico que não revela stack
-    if (threat.type === "honeypot" || threat.type === "scanner" || threat.type === "probe") {
+    if (
+      threat.type === "honeypot" ||
+      threat.type === "scanner" ||
+      threat.type === "probe"
+    ) {
       return new NextResponse("Not Found", {
         status: 404,
         headers: {

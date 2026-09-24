@@ -32,3 +32,18 @@ Aplicar as melhorias e correções registradas em `AUDITORIA_COMPLETA_WEB_2026-0
 - 2026-09-23: início; lida a documentação local de CSP e Proxy do Next.js 16.
 - 2026-09-23: correções aplicadas; typecheck, lint e check estático do Worker passaram. Runtime e integração permanecem pendentes.
 - 2026-09-23: configuração recebeu fluxo de exclusão com confirmação, reautenticação e limpeza dos dados no Worker; typecheck, lint e check do Worker passaram. Exclusão real/conta controlada ainda não foi exercitada.
+
+## Checkout Mercado Pago dentro do Papirar
+
+1. [x] Trocar a sessão de checkout hospedado por uma intenção autenticada com chave pública e e-mail do usuário.
+2. [x] Mostrar o Card Payment Brick tokenizado dentro da página de assinatura; número e CVV não passam pelo servidor Papirar.
+3. [x] Criar a assinatura recorrente no Worker com preço/periodicidade fixos no servidor e vinculação por UID + referência imutável da sessão.
+4. [x] Impedir reuso, submissão concorrente e sessões vencidas; não liberar Premium antes de receber status `authorized` do Mercado Pago.
+5. [x] Atualizar CSP e proxy da API para o SDK e a nova rota autenticada.
+6. [x] Configurar `MERCADO_PAGO_PUBLIC_KEY` no Worker e publicar a configuração de produção.
+7. [ ] Validar sandbox/autorização/webhook de ponta a ponta com credencial de teste; sem cobrança real.
+8. [x] Rodar typecheck/lint/build do Web e check estático/dry-run do Worker.
+
+Estado: Worker publicado em produção; build Web concluído. A publicação Web será acionada pelo push Git. Uma validação temporária do cartão e o primeiro débito podem ocorrer logo após autorizar a assinatura, conforme comportamento descrito pelo Mercado Pago; a tela informa a validação e a cobrança mensal.
+
+Verificação adicional em 2026-09-24: o painel Mercado Pago já tinha a URL de produção e o evento “Planos e assinaturas” selecionado; no Worker, o secret `MERCADO_PAGO_WEBHOOK_SECRET` está presente. A configuração de teste segue sem URL, pois o Worker está usando credenciais de produção. A chave pública de produção foi adicionada à configuração e o Worker foi publicado (versão `86703c2a-0d33-4d0f-82d3-2e5dfe6af476`). Sandbox e entrega de webhook continuam sem validação end-to-end; nenhuma compra/cobrança real foi feita.

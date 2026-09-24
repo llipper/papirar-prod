@@ -89,9 +89,9 @@ export async function cancelMercadoPagoSubscription() {
 }
 
 export async function redeemPremiumTrial() {
-  const result = await authorizedRequest("/trial/redeem", {
+  await authorizedRequest("/trial/redeem", {
     method: "POST",
-  }) as SubscriptionOverview
+  })
   invalidateSubscriptionOverview()
-  return result
+  return getSubscriptionOverview()
 }

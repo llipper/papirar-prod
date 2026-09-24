@@ -10,6 +10,7 @@ const allowedPaths = new Set([
   "entitlements",
   "trial/redeem",
   "mercado-pago/checkout",
+  "mercado-pago/subscribe",
   "mercado-pago/cancel",
 ])
 
@@ -32,7 +33,10 @@ async function proxyBillingRequest(request: Request, context: RouteContext) {
 
   const authorization = request.headers.get("authorization")
   if (!authorization?.startsWith("Bearer ")) {
-    return NextResponse.json({ error: "Autenticação necessária." }, { status: 401 })
+    return NextResponse.json(
+      { error: "Autenticação necessária." },
+      { status: 401 }
+    )
   }
 
   try {
@@ -46,7 +50,10 @@ async function proxyBillingRequest(request: Request, context: RouteContext) {
           ? { "Content-Type": request.headers.get("content-type")! }
           : {}),
       },
-      body: request.method === "GET" || request.method === "HEAD" ? undefined : await request.arrayBuffer(),
+      body:
+        request.method === "GET" || request.method === "HEAD"
+          ? undefined
+          : await request.arrayBuffer(),
       cache: "no-store",
     })
     const body = await upstream.text()
@@ -57,7 +64,9 @@ async function proxyBillingRequest(request: Request, context: RouteContext) {
     return new Response(body, {
       status: upstream.status,
       headers: {
-        "Content-Type": upstream.headers.get("content-type") ?? "application/json; charset=utf-8",
+        "Content-Type":
+          upstream.headers.get("content-type") ??
+          "application/json; charset=utf-8",
         "Cache-Control": "no-store",
       },
     })
@@ -68,7 +77,7 @@ async function proxyBillingRequest(request: Request, context: RouteContext) {
     })
     return NextResponse.json(
       { error: "Não foi possível comunicar com o serviço de pagamento." },
-      { status: 502 },
+      { status: 502 }
     )
   }
 }

@@ -116,7 +116,7 @@ export function SubscriptionManagementCard({ compact = false }: { compact?: bool
                   R$ 24,99<span className="text-xl">/mês</span>
                 </p>
                 <p className="border-l pl-5 text-sm text-muted-foreground">
-                  {canRedeemTrial ? <>3 dias de teste grátis.<br />Cancele quando quiser.</> : "Cancele quando quiser."}
+                  {canRedeemTrial ? <>3 dias grátis, sem cartão.<br />Sem cobrança automática.</> : "Assinatura mensal de R$ 24,99."}
                 </p>
               </div>
             ) : (
@@ -149,7 +149,7 @@ export function SubscriptionManagementCard({ compact = false }: { compact?: bool
                       ? "Assinar Premium definitivo"
                       : cancelled
                         ? "Assinar novamente"
-                        : "Iniciar 3 dias de teste grátis"
+                        : "Assinar por R$ 24,99/mês"
                   }
                   className="h-12 rounded-full bg-[#b68829] px-6 text-base text-white hover:bg-[#95701f]"
                 />
